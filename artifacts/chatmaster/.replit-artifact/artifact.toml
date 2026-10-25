@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ChatMaster"
+description = "An AI-powered chatbot automation platform for managing business conversations. The first release includes tenant-safe authentication, an analytics dashboard, and an interactive chatbot flow builder backed by a real API and PostgreSQL."
+version = "1.0.0"
+id = "artifacts/chatmaster"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20739
+
+[services.development]
+run = "pnpm --filter @workspace/chatmaster run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/chatmaster", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/chatmaster/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20739"
+BASE_PATH = "/"

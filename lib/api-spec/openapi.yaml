@@ -3,14 +3,160 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ChatMaster workspace, dashboard, and flow-builder API.
 servers:
   - url: /api
     description: Base API path
 tags:
+  - name: auth
+    description: Current authenticated account and workspace
+  - name: dashboard
+    description: Workspace analytics
+  - name: flows
+    description: Chatbot flow builder
   - name: health
     description: Health operations
 paths:
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user and workspace
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Current user and workspace membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Authentication required
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get workspace flow analytics and recent activity
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Workspace dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Authentication required
+  /flows:
+    get:
+      operationId: listFlows
+      tags: [flows]
+      summary: List flows in the current workspace
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Workspace flows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Flow"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createFlow
+      tags: [flows]
+      summary: Create a draft flow
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlowInput"
+      responses:
+        "201":
+          description: Created flow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flow"
+        "400":
+          description: Invalid flow definition
+        "401":
+          description: Authentication required
+  /flows/{flowId}:
+    parameters:
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getFlow
+      tags: [flows]
+      summary: Get a flow in the current workspace
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Flow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flow"
+        "401":
+          description: Authentication required
+        "404":
+          description: Flow not found
+    patch:
+      operationId: updateFlow
+      tags: [flows]
+      summary: Update a draft flow or its publication status
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlowUpdate"
+      responses:
+        "200":
+          description: Updated flow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Flow"
+        "400":
+          description: Invalid flow definition
+        "401":
+          description: Authentication required
+        "404":
+          description: Flow not found
+    delete:
+      operationId: deleteFlow
+      tags: [flows]
+      summary: Delete a flow
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteFlowResult"
+        "401":
+          description: Authentication required
+        "404":
+          description: Flow not found
   /healthz:
     get:
       operationId: healthCheck
@@ -25,7 +171,190 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 components:
+  securitySchemes:
+    clerkSession:
+      type: apiKey
+      in: cookie
+      name: __session
   schemas:
+    CurrentUser:
+      type: object
+      required: [userId, email, name, workspaceId, workspaceName, role]
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        workspaceId:
+          type: string
+          format: uuid
+        workspaceName:
+          type: string
+        role:
+          type: string
+          enum: [owner, admin, agent]
+    DashboardSummary:
+      type: object
+      required: [flowCount, publishedFlowCount, nodeCount, recentFlows]
+      properties:
+        flowCount:
+          type: integer
+          minimum: 0
+        publishedFlowCount:
+          type: integer
+          minimum: 0
+        nodeCount:
+          type: integer
+          minimum: 0
+        recentFlows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flow"
+    Flow:
+      type: object
+      required: [id, name, description, status, graph, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, published]
+        graph:
+          $ref: "#/components/schemas/FlowGraph"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    FlowInput:
+      type: object
+      required: [name, graph]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: ["string", "null"]
+          maxLength: 1000
+        graph:
+          $ref: "#/components/schemas/FlowGraph"
+    FlowUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: ["string", "null"]
+          maxLength: 1000
+        status:
+          type: string
+          enum: [draft, published]
+        graph:
+          $ref: "#/components/schemas/FlowGraph"
+    FlowGraph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/FlowNode"
+        edges:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/FlowEdge"
+    FlowNode:
+      type: object
+      required: [id, type, position, data]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 80
+        type:
+          type: string
+          enum: [trigger, message, condition]
+        position:
+          $ref: "#/components/schemas/FlowPosition"
+        data:
+          $ref: "#/components/schemas/FlowNodeData"
+    FlowPosition:
+      type: object
+      required: [x, y]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+    FlowNodeData:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        text:
+          type: ["string", "null"]
+          maxLength: 2000
+        condition:
+          type: ["string", "null"]
+          maxLength: 500
+        buttons:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/FlowButton"
+    FlowButton:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        targetId:
+          type: ["string", "null"]
+    FlowEdge:
+      type: object
+      required: [id, source, target]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 160
+        source:
+          type: string
+          minLength: 1
+          maxLength: 80
+        target:
+          type: string
+          minLength: 1
+          maxLength: 80
+        label:
+          type: ["string", "null"]
+          maxLength: 120
+    DeleteFlowResult:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: boolean
     HealthStatus:
       type: object
       properties:
