@@ -27,4 +27,14 @@ export interface FlowEdge {
      * @nullable
      */
   label?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  sourceHandle?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  targetHandle?: string | null;
 }

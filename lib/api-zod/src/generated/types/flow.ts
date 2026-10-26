@@ -15,6 +15,10 @@ export interface Flow {
   description: string | null;
   status: FlowStatus;
   graph: FlowGraph;
+  /** @minimum 1 */
+  draftVersion: number;
+  /** @minimum 0 */
+  publishedVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }

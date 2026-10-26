@@ -8,10 +8,18 @@
 
 export interface FlowButton {
   /**
+     * @maxLength 80
+     * @nullable
+     */
+  id?: string | null;
+  /**
      * @minLength 1
      * @maxLength 80
      */
   label: string;
-  /** @nullable */
+  /**
+     * @maxLength 80
+     * @nullable
+     */
   targetId?: string | null;
 }

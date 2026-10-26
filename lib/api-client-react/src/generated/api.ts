@@ -29,9 +29,14 @@ import type {
   DashboardSummary,
   DeleteFlowResult,
   Flow,
+  FlowExecution,
+  FlowGraph,
   FlowInput,
   FlowUpdate,
-  HealthStatus
+  FlowValidation,
+  HealthStatus,
+  SimulationInput,
+  SimulationStartInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -714,6 +719,374 @@ export const useDeleteFlow = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteFlowMutationOptions(options), queryClient);
+    }
+
+export const getValidateFlowUrl = (flowId: string,) => {
+
+
+
+
+  return `/api/flows/${flowId}/validate`
+}
+
+/**
+ * @summary Validate a flow graph before publishing
+ */
+export const validateFlow = async (flowId: string,
+    flowGraph: FlowGraph, options?: Parameters<typeof customFetch>[1]): Promise<FlowValidation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlowValidation>(getValidateFlowUrl(flowId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(flowGraph)
+  }
+);}
+
+
+
+
+
+export const getValidateFlowMutationKey = () => ['validateFlow'] as const;
+
+export const getValidateFlowMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateFlow>>, TError,ValidateFlowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof validateFlow>>, TError,ValidateFlowMutationVariables, TContext> => {
+
+const mutationKey = getValidateFlowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof validateFlow>>, ValidateFlowMutationVariables> = (props) => {
+          const {flowId,data} = props ?? {};
+
+          return  validateFlow(flowId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ValidateFlowMutationResult = NonNullable<Awaited<ReturnType<typeof validateFlow>>>
+    export type ValidateFlowMutationBody = BodyType<FlowGraph>
+    export type ValidateFlowMutationError = ErrorType<void>
+    export type ValidateFlowMutationVariables = {flowId: string;data: BodyType<FlowGraph>}
+
+    /**
+ * @summary Validate a flow graph before publishing
+ */
+export const useValidateFlow = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validateFlow>>, TError,ValidateFlowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof validateFlow>>,
+        TError,
+        ValidateFlowMutationVariables,
+        TContext
+      > => {
+      return useMutation(getValidateFlowMutationOptions(options), queryClient);
+    }
+
+export const getStartFlowSimulationUrl = (flowId: string,) => {
+
+
+
+
+  return `/api/flows/${flowId}/simulations`
+}
+
+/**
+ * @summary Start an isolated test run of the saved draft
+ */
+export const startFlowSimulation = async (flowId: string,
+    simulationStartInput: SimulationStartInput, options?: Parameters<typeof customFetch>[1]): Promise<FlowExecution> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlowExecution>(getStartFlowSimulationUrl(flowId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(simulationStartInput)
+  }
+);}
+
+
+
+
+
+export const getStartFlowSimulationMutationKey = () => ['startFlowSimulation'] as const;
+
+export const getStartFlowSimulationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFlowSimulation>>, TError,StartFlowSimulationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startFlowSimulation>>, TError,StartFlowSimulationMutationVariables, TContext> => {
+
+const mutationKey = getStartFlowSimulationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startFlowSimulation>>, StartFlowSimulationMutationVariables> = (props) => {
+          const {flowId,data} = props ?? {};
+
+          return  startFlowSimulation(flowId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartFlowSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof startFlowSimulation>>>
+    export type StartFlowSimulationMutationBody = BodyType<SimulationStartInput>
+    export type StartFlowSimulationMutationError = ErrorType<void>
+    export type StartFlowSimulationMutationVariables = {flowId: string;data: BodyType<SimulationStartInput>}
+
+    /**
+ * @summary Start an isolated test run of the saved draft
+ */
+export const useStartFlowSimulation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startFlowSimulation>>, TError,StartFlowSimulationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startFlowSimulation>>,
+        TError,
+        StartFlowSimulationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartFlowSimulationMutationOptions(options), queryClient);
+    }
+
+export const getGetFlowSimulationUrl = (simulationId: string,) => {
+
+
+
+
+  return `/api/simulations/${simulationId}`
+}
+
+/**
+ * @summary Get a simulation owned by the current workspace
+ */
+export const getFlowSimulation = async (simulationId: string, options?: Parameters<typeof customFetch>[1]): Promise<FlowExecution> => {
+
+  return customFetch<FlowExecution>(getGetFlowSimulationUrl(simulationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFlowSimulationQueryKey = (simulationId: string,) => {
+    return [
+    `/api/simulations/${simulationId}`
+    ] as const;
+    }
+
+
+export const getGetFlowSimulationQueryOptions = <TData = Awaited<ReturnType<typeof getFlowSimulation>>, TError = ErrorType<void>>(simulationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFlowSimulationQueryKey(simulationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFlowSimulation>>> = ({ signal }) => getFlowSimulation(simulationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: simulationId !== null && simulationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetFlowSimulationQueryResult = NonNullable<Awaited<ReturnType<typeof getFlowSimulation>>>
+export type GetFlowSimulationQueryError = ErrorType<void>
+
+
+export function useGetFlowSimulation<TData = Awaited<ReturnType<typeof getFlowSimulation>>, TError = ErrorType<void>>(
+ simulationId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFlowSimulation>>,
+          TError,
+          Awaited<ReturnType<typeof getFlowSimulation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFlowSimulation<TData = Awaited<ReturnType<typeof getFlowSimulation>>, TError = ErrorType<void>>(
+ simulationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getFlowSimulation>>,
+          TError,
+          Awaited<ReturnType<typeof getFlowSimulation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetFlowSimulation<TData = Awaited<ReturnType<typeof getFlowSimulation>>, TError = ErrorType<void>>(
+ simulationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a simulation owned by the current workspace
+ */
+
+export function useGetFlowSimulation<TData = Awaited<ReturnType<typeof getFlowSimulation>>, TError = ErrorType<void>>(
+ simulationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getFlowSimulation>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetFlowSimulationQueryOptions(simulationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendSimulationInputUrl = (simulationId: string,) => {
+
+
+
+
+  return `/api/simulations/${simulationId}/input`
+}
+
+/**
+ * @summary Continue a test run with a visitor message or button choice
+ */
+export const sendSimulationInput = async (simulationId: string,
+    simulationInput: SimulationInput, options?: Parameters<typeof customFetch>[1]): Promise<FlowExecution> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FlowExecution>(getSendSimulationInputUrl(simulationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(simulationInput)
+  }
+);}
+
+
+
+
+
+export const getSendSimulationInputMutationKey = () => ['sendSimulationInput'] as const;
+
+export const getSendSimulationInputMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSimulationInput>>, TError,SendSimulationInputMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendSimulationInput>>, TError,SendSimulationInputMutationVariables, TContext> => {
+
+const mutationKey = getSendSimulationInputMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendSimulationInput>>, SendSimulationInputMutationVariables> = (props) => {
+          const {simulationId,data} = props ?? {};
+
+          return  sendSimulationInput(simulationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendSimulationInputMutationResult = NonNullable<Awaited<ReturnType<typeof sendSimulationInput>>>
+    export type SendSimulationInputMutationBody = BodyType<SimulationInput>
+    export type SendSimulationInputMutationError = ErrorType<void>
+    export type SendSimulationInputMutationVariables = {simulationId: string;data: BodyType<SimulationInput>}
+
+    /**
+ * @summary Continue a test run with a visitor message or button choice
+ */
+export const useSendSimulationInput = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendSimulationInput>>, TError,SendSimulationInputMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sendSimulationInput>>,
+        TError,
+        SendSimulationInputMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendSimulationInputMutationOptions(options), queryClient);
     }
 
 export const getHealthCheckUrl = () => {

@@ -38,9 +38,36 @@ export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTextMax
 
 export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionMax = 500;
 
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsMax = 5;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataKeywordsItemMax = 100;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataKeywordsMax = 20;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataMessageTypeDefault = `text`;
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionFieldMax = 160;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionValueMax = 500;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTagNameMax = 80;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataFieldNameMax = 120;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataFieldValueMax = 1000;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataDelaySecondsMin = 0;
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataAiPromptMax = 2000;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const getDashboardSummaryResponseRecentFlowsItemGraphNodesMax = 200;
 
@@ -52,7 +79,14 @@ export const getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemTargetMax =
 
 export const getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemLabelMax = 120;
 
+export const getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemSourceHandleMax = 120;
+
+export const getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemTargetHandleMax = 120;
+
 export const getDashboardSummaryResponseRecentFlowsItemGraphEdgesMax = 500;
+
+
+export const getDashboardSummaryResponseRecentFlowsItemPublishedVersionMin = 0;
 
 
 
@@ -68,7 +102,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -78,18 +112,35 @@ export const GetDashboardSummaryResponse = zod.object({
   "text": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataKeywordsItemMax)).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataDelaySecondsMin).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(getDashboardSummaryResponseRecentFlowsItemGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemTargetMax),
-  "label": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesItemTargetHandleMax).nullish()
 })).max(getDashboardSummaryResponseRecentFlowsItemGraphEdgesMax)
 }),
+  "draftVersion": zod.number().int().min(1),
+  "publishedVersion": zod.number().int().min(getDashboardSummaryResponseRecentFlowsItemPublishedVersionMin),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }))
@@ -107,9 +158,36 @@ export const listFlowsResponseGraphNodesItemDataTextMax = 2000;
 
 export const listFlowsResponseGraphNodesItemDataConditionMax = 500;
 
+export const listFlowsResponseGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const listFlowsResponseGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const listFlowsResponseGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const listFlowsResponseGraphNodesItemDataButtonsMax = 5;
+
+export const listFlowsResponseGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const listFlowsResponseGraphNodesItemDataKeywordsItemMax = 100;
+
+export const listFlowsResponseGraphNodesItemDataKeywordsMax = 20;
+
+export const listFlowsResponseGraphNodesItemDataMessageTypeDefault = `text`;
+export const listFlowsResponseGraphNodesItemDataConditionFieldMax = 160;
+
+export const listFlowsResponseGraphNodesItemDataConditionValueMax = 500;
+
+export const listFlowsResponseGraphNodesItemDataTagNameMax = 80;
+
+export const listFlowsResponseGraphNodesItemDataFieldNameMax = 120;
+
+export const listFlowsResponseGraphNodesItemDataFieldValueMax = 1000;
+
+export const listFlowsResponseGraphNodesItemDataDelaySecondsMin = 0;
+export const listFlowsResponseGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const listFlowsResponseGraphNodesItemDataAiPromptMax = 2000;
+
+export const listFlowsResponseGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const listFlowsResponseGraphNodesMax = 200;
 
@@ -121,7 +199,14 @@ export const listFlowsResponseGraphEdgesItemTargetMax = 80;
 
 export const listFlowsResponseGraphEdgesItemLabelMax = 120;
 
+export const listFlowsResponseGraphEdgesItemSourceHandleMax = 120;
+
+export const listFlowsResponseGraphEdgesItemTargetHandleMax = 120;
+
 export const listFlowsResponseGraphEdgesMax = 500;
+
+
+export const listFlowsResponsePublishedVersionMin = 0;
 
 
 
@@ -133,7 +218,7 @@ export const ListFlowsResponseItem = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(listFlowsResponseGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -143,18 +228,35 @@ export const ListFlowsResponseItem = zod.object({
   "text": zod.string().max(listFlowsResponseGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(listFlowsResponseGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(listFlowsResponseGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(listFlowsResponseGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(listFlowsResponseGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(listFlowsResponseGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(listFlowsResponseGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(listFlowsResponseGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(listFlowsResponseGraphNodesItemDataKeywordsItemMax)).max(listFlowsResponseGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(listFlowsResponseGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(listFlowsResponseGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(listFlowsResponseGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(listFlowsResponseGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(listFlowsResponseGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(listFlowsResponseGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(listFlowsResponseGraphNodesItemDataDelaySecondsMin).max(listFlowsResponseGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(listFlowsResponseGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(listFlowsResponseGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(listFlowsResponseGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(listFlowsResponseGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(listFlowsResponseGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(listFlowsResponseGraphEdgesItemTargetMax),
-  "label": zod.string().max(listFlowsResponseGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(listFlowsResponseGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(listFlowsResponseGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(listFlowsResponseGraphEdgesItemTargetHandleMax).nullish()
 })).max(listFlowsResponseGraphEdgesMax)
 }),
+  "draftVersion": zod.number().int().min(1),
+  "publishedVersion": zod.number().int().min(listFlowsResponsePublishedVersionMin),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -176,9 +278,36 @@ export const createFlowBodyGraphNodesItemDataTextMax = 2000;
 
 export const createFlowBodyGraphNodesItemDataConditionMax = 500;
 
+export const createFlowBodyGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const createFlowBodyGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const createFlowBodyGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const createFlowBodyGraphNodesItemDataButtonsMax = 5;
+
+export const createFlowBodyGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const createFlowBodyGraphNodesItemDataKeywordsItemMax = 100;
+
+export const createFlowBodyGraphNodesItemDataKeywordsMax = 20;
+
+export const createFlowBodyGraphNodesItemDataMessageTypeDefault = `text`;
+export const createFlowBodyGraphNodesItemDataConditionFieldMax = 160;
+
+export const createFlowBodyGraphNodesItemDataConditionValueMax = 500;
+
+export const createFlowBodyGraphNodesItemDataTagNameMax = 80;
+
+export const createFlowBodyGraphNodesItemDataFieldNameMax = 120;
+
+export const createFlowBodyGraphNodesItemDataFieldValueMax = 1000;
+
+export const createFlowBodyGraphNodesItemDataDelaySecondsMin = 0;
+export const createFlowBodyGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const createFlowBodyGraphNodesItemDataAiPromptMax = 2000;
+
+export const createFlowBodyGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const createFlowBodyGraphNodesMax = 200;
 
@@ -190,6 +319,10 @@ export const createFlowBodyGraphEdgesItemTargetMax = 80;
 
 export const createFlowBodyGraphEdgesItemLabelMax = 120;
 
+export const createFlowBodyGraphEdgesItemSourceHandleMax = 120;
+
+export const createFlowBodyGraphEdgesItemTargetHandleMax = 120;
+
 export const createFlowBodyGraphEdgesMax = 500;
 
 
@@ -200,7 +333,7 @@ export const CreateFlowBody = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(createFlowBodyGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -210,16 +343,31 @@ export const CreateFlowBody = zod.object({
   "text": zod.string().max(createFlowBodyGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(createFlowBodyGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(createFlowBodyGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(createFlowBodyGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(createFlowBodyGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(createFlowBodyGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(createFlowBodyGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(createFlowBodyGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(createFlowBodyGraphNodesItemDataKeywordsItemMax)).max(createFlowBodyGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(createFlowBodyGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(createFlowBodyGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(createFlowBodyGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(createFlowBodyGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(createFlowBodyGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(createFlowBodyGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(createFlowBodyGraphNodesItemDataDelaySecondsMin).max(createFlowBodyGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(createFlowBodyGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(createFlowBodyGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(createFlowBodyGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(createFlowBodyGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(createFlowBodyGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(createFlowBodyGraphEdgesItemTargetMax),
-  "label": zod.string().max(createFlowBodyGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(createFlowBodyGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(createFlowBodyGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(createFlowBodyGraphEdgesItemTargetHandleMax).nullish()
 })).max(createFlowBodyGraphEdgesMax)
 })
 })
@@ -232,9 +380,36 @@ export const createFlowResponseGraphNodesItemDataTextMax = 2000;
 
 export const createFlowResponseGraphNodesItemDataConditionMax = 500;
 
+export const createFlowResponseGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const createFlowResponseGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const createFlowResponseGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const createFlowResponseGraphNodesItemDataButtonsMax = 5;
+
+export const createFlowResponseGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const createFlowResponseGraphNodesItemDataKeywordsItemMax = 100;
+
+export const createFlowResponseGraphNodesItemDataKeywordsMax = 20;
+
+export const createFlowResponseGraphNodesItemDataMessageTypeDefault = `text`;
+export const createFlowResponseGraphNodesItemDataConditionFieldMax = 160;
+
+export const createFlowResponseGraphNodesItemDataConditionValueMax = 500;
+
+export const createFlowResponseGraphNodesItemDataTagNameMax = 80;
+
+export const createFlowResponseGraphNodesItemDataFieldNameMax = 120;
+
+export const createFlowResponseGraphNodesItemDataFieldValueMax = 1000;
+
+export const createFlowResponseGraphNodesItemDataDelaySecondsMin = 0;
+export const createFlowResponseGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const createFlowResponseGraphNodesItemDataAiPromptMax = 2000;
+
+export const createFlowResponseGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const createFlowResponseGraphNodesMax = 200;
 
@@ -246,7 +421,14 @@ export const createFlowResponseGraphEdgesItemTargetMax = 80;
 
 export const createFlowResponseGraphEdgesItemLabelMax = 120;
 
+export const createFlowResponseGraphEdgesItemSourceHandleMax = 120;
+
+export const createFlowResponseGraphEdgesItemTargetHandleMax = 120;
+
 export const createFlowResponseGraphEdgesMax = 500;
+
+
+export const createFlowResponsePublishedVersionMin = 0;
 
 
 
@@ -258,7 +440,7 @@ export const CreateFlowResponse = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(createFlowResponseGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -268,18 +450,35 @@ export const CreateFlowResponse = zod.object({
   "text": zod.string().max(createFlowResponseGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(createFlowResponseGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(createFlowResponseGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(createFlowResponseGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(createFlowResponseGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(createFlowResponseGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(createFlowResponseGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(createFlowResponseGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(createFlowResponseGraphNodesItemDataKeywordsItemMax)).max(createFlowResponseGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(createFlowResponseGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(createFlowResponseGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(createFlowResponseGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(createFlowResponseGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(createFlowResponseGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(createFlowResponseGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(createFlowResponseGraphNodesItemDataDelaySecondsMin).max(createFlowResponseGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(createFlowResponseGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(createFlowResponseGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(createFlowResponseGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(createFlowResponseGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(createFlowResponseGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(createFlowResponseGraphEdgesItemTargetMax),
-  "label": zod.string().max(createFlowResponseGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(createFlowResponseGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(createFlowResponseGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(createFlowResponseGraphEdgesItemTargetHandleMax).nullish()
 })).max(createFlowResponseGraphEdgesMax)
 }),
+  "draftVersion": zod.number().int().min(1),
+  "publishedVersion": zod.number().int().min(createFlowResponsePublishedVersionMin),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -300,9 +499,36 @@ export const getFlowResponseGraphNodesItemDataTextMax = 2000;
 
 export const getFlowResponseGraphNodesItemDataConditionMax = 500;
 
+export const getFlowResponseGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const getFlowResponseGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const getFlowResponseGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const getFlowResponseGraphNodesItemDataButtonsMax = 5;
+
+export const getFlowResponseGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const getFlowResponseGraphNodesItemDataKeywordsItemMax = 100;
+
+export const getFlowResponseGraphNodesItemDataKeywordsMax = 20;
+
+export const getFlowResponseGraphNodesItemDataMessageTypeDefault = `text`;
+export const getFlowResponseGraphNodesItemDataConditionFieldMax = 160;
+
+export const getFlowResponseGraphNodesItemDataConditionValueMax = 500;
+
+export const getFlowResponseGraphNodesItemDataTagNameMax = 80;
+
+export const getFlowResponseGraphNodesItemDataFieldNameMax = 120;
+
+export const getFlowResponseGraphNodesItemDataFieldValueMax = 1000;
+
+export const getFlowResponseGraphNodesItemDataDelaySecondsMin = 0;
+export const getFlowResponseGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const getFlowResponseGraphNodesItemDataAiPromptMax = 2000;
+
+export const getFlowResponseGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const getFlowResponseGraphNodesMax = 200;
 
@@ -314,7 +540,14 @@ export const getFlowResponseGraphEdgesItemTargetMax = 80;
 
 export const getFlowResponseGraphEdgesItemLabelMax = 120;
 
+export const getFlowResponseGraphEdgesItemSourceHandleMax = 120;
+
+export const getFlowResponseGraphEdgesItemTargetHandleMax = 120;
+
 export const getFlowResponseGraphEdgesMax = 500;
+
+
+export const getFlowResponsePublishedVersionMin = 0;
 
 
 
@@ -326,7 +559,7 @@ export const GetFlowResponse = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(getFlowResponseGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -336,18 +569,35 @@ export const GetFlowResponse = zod.object({
   "text": zod.string().max(getFlowResponseGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(getFlowResponseGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(getFlowResponseGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(getFlowResponseGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(getFlowResponseGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(getFlowResponseGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(getFlowResponseGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(getFlowResponseGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(getFlowResponseGraphNodesItemDataKeywordsItemMax)).max(getFlowResponseGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(getFlowResponseGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(getFlowResponseGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(getFlowResponseGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(getFlowResponseGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(getFlowResponseGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(getFlowResponseGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(getFlowResponseGraphNodesItemDataDelaySecondsMin).max(getFlowResponseGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(getFlowResponseGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(getFlowResponseGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(getFlowResponseGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(getFlowResponseGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(getFlowResponseGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(getFlowResponseGraphEdgesItemTargetMax),
-  "label": zod.string().max(getFlowResponseGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(getFlowResponseGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(getFlowResponseGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(getFlowResponseGraphEdgesItemTargetHandleMax).nullish()
 })).max(getFlowResponseGraphEdgesMax)
 }),
+  "draftVersion": zod.number().int().min(1),
+  "publishedVersion": zod.number().int().min(getFlowResponsePublishedVersionMin),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -372,9 +622,36 @@ export const updateFlowBodyGraphNodesItemDataTextMax = 2000;
 
 export const updateFlowBodyGraphNodesItemDataConditionMax = 500;
 
+export const updateFlowBodyGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const updateFlowBodyGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const updateFlowBodyGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const updateFlowBodyGraphNodesItemDataButtonsMax = 5;
+
+export const updateFlowBodyGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const updateFlowBodyGraphNodesItemDataKeywordsItemMax = 100;
+
+export const updateFlowBodyGraphNodesItemDataKeywordsMax = 20;
+
+export const updateFlowBodyGraphNodesItemDataMessageTypeDefault = `text`;
+export const updateFlowBodyGraphNodesItemDataConditionFieldMax = 160;
+
+export const updateFlowBodyGraphNodesItemDataConditionValueMax = 500;
+
+export const updateFlowBodyGraphNodesItemDataTagNameMax = 80;
+
+export const updateFlowBodyGraphNodesItemDataFieldNameMax = 120;
+
+export const updateFlowBodyGraphNodesItemDataFieldValueMax = 1000;
+
+export const updateFlowBodyGraphNodesItemDataDelaySecondsMin = 0;
+export const updateFlowBodyGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const updateFlowBodyGraphNodesItemDataAiPromptMax = 2000;
+
+export const updateFlowBodyGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const updateFlowBodyGraphNodesMax = 200;
 
@@ -385,6 +662,10 @@ export const updateFlowBodyGraphEdgesItemSourceMax = 80;
 export const updateFlowBodyGraphEdgesItemTargetMax = 80;
 
 export const updateFlowBodyGraphEdgesItemLabelMax = 120;
+
+export const updateFlowBodyGraphEdgesItemSourceHandleMax = 120;
+
+export const updateFlowBodyGraphEdgesItemTargetHandleMax = 120;
 
 export const updateFlowBodyGraphEdgesMax = 500;
 
@@ -397,7 +678,7 @@ export const UpdateFlowBody = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(updateFlowBodyGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -407,16 +688,31 @@ export const UpdateFlowBody = zod.object({
   "text": zod.string().max(updateFlowBodyGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(updateFlowBodyGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(updateFlowBodyGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(updateFlowBodyGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(updateFlowBodyGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(updateFlowBodyGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(updateFlowBodyGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(updateFlowBodyGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(updateFlowBodyGraphNodesItemDataKeywordsItemMax)).max(updateFlowBodyGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(updateFlowBodyGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(updateFlowBodyGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(updateFlowBodyGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(updateFlowBodyGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(updateFlowBodyGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(updateFlowBodyGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(updateFlowBodyGraphNodesItemDataDelaySecondsMin).max(updateFlowBodyGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(updateFlowBodyGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(updateFlowBodyGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(updateFlowBodyGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(updateFlowBodyGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(updateFlowBodyGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(updateFlowBodyGraphEdgesItemTargetMax),
-  "label": zod.string().max(updateFlowBodyGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(updateFlowBodyGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(updateFlowBodyGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(updateFlowBodyGraphEdgesItemTargetHandleMax).nullish()
 })).max(updateFlowBodyGraphEdgesMax)
 }).optional()
 })
@@ -429,9 +725,36 @@ export const updateFlowResponseGraphNodesItemDataTextMax = 2000;
 
 export const updateFlowResponseGraphNodesItemDataConditionMax = 500;
 
+export const updateFlowResponseGraphNodesItemDataButtonsItemIdMax = 80;
+
 export const updateFlowResponseGraphNodesItemDataButtonsItemLabelMax = 80;
 
+export const updateFlowResponseGraphNodesItemDataButtonsItemTargetIdMax = 80;
+
 export const updateFlowResponseGraphNodesItemDataButtonsMax = 5;
+
+export const updateFlowResponseGraphNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const updateFlowResponseGraphNodesItemDataKeywordsItemMax = 100;
+
+export const updateFlowResponseGraphNodesItemDataKeywordsMax = 20;
+
+export const updateFlowResponseGraphNodesItemDataMessageTypeDefault = `text`;
+export const updateFlowResponseGraphNodesItemDataConditionFieldMax = 160;
+
+export const updateFlowResponseGraphNodesItemDataConditionValueMax = 500;
+
+export const updateFlowResponseGraphNodesItemDataTagNameMax = 80;
+
+export const updateFlowResponseGraphNodesItemDataFieldNameMax = 120;
+
+export const updateFlowResponseGraphNodesItemDataFieldValueMax = 1000;
+
+export const updateFlowResponseGraphNodesItemDataDelaySecondsMin = 0;
+export const updateFlowResponseGraphNodesItemDataDelaySecondsMax = 86400;
+
+export const updateFlowResponseGraphNodesItemDataAiPromptMax = 2000;
+
+export const updateFlowResponseGraphNodesItemDataHandoffNoteMax = 1000;
 
 export const updateFlowResponseGraphNodesMax = 200;
 
@@ -443,7 +766,14 @@ export const updateFlowResponseGraphEdgesItemTargetMax = 80;
 
 export const updateFlowResponseGraphEdgesItemLabelMax = 120;
 
+export const updateFlowResponseGraphEdgesItemSourceHandleMax = 120;
+
+export const updateFlowResponseGraphEdgesItemTargetHandleMax = 120;
+
 export const updateFlowResponseGraphEdgesMax = 500;
+
+
+export const updateFlowResponsePublishedVersionMin = 0;
 
 
 
@@ -455,7 +785,7 @@ export const UpdateFlowResponse = zod.object({
   "graph": zod.object({
   "nodes": zod.array(zod.object({
   "id": zod.string().min(1).max(updateFlowResponseGraphNodesItemIdMax),
-  "type": zod.enum(['trigger', 'message', 'condition']),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
   "position": zod.object({
   "x": zod.number(),
   "y": zod.number()
@@ -465,18 +795,35 @@ export const UpdateFlowResponse = zod.object({
   "text": zod.string().max(updateFlowResponseGraphNodesItemDataTextMax).nullish(),
   "condition": zod.string().max(updateFlowResponseGraphNodesItemDataConditionMax).nullish(),
   "buttons": zod.array(zod.object({
+  "id": zod.string().max(updateFlowResponseGraphNodesItemDataButtonsItemIdMax).nullish(),
   "label": zod.string().min(1).max(updateFlowResponseGraphNodesItemDataButtonsItemLabelMax),
-  "targetId": zod.string().nullish()
-})).max(updateFlowResponseGraphNodesItemDataButtonsMax).optional()
+  "targetId": zod.string().max(updateFlowResponseGraphNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(updateFlowResponseGraphNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(updateFlowResponseGraphNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(updateFlowResponseGraphNodesItemDataKeywordsItemMax)).max(updateFlowResponseGraphNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(updateFlowResponseGraphNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(updateFlowResponseGraphNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(updateFlowResponseGraphNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(updateFlowResponseGraphNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(updateFlowResponseGraphNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(updateFlowResponseGraphNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(updateFlowResponseGraphNodesItemDataDelaySecondsMin).max(updateFlowResponseGraphNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(updateFlowResponseGraphNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(updateFlowResponseGraphNodesItemDataHandoffNoteMax).nullish()
 })
 })).max(updateFlowResponseGraphNodesMax),
   "edges": zod.array(zod.object({
   "id": zod.string().min(1).max(updateFlowResponseGraphEdgesItemIdMax),
   "source": zod.string().min(1).max(updateFlowResponseGraphEdgesItemSourceMax),
   "target": zod.string().min(1).max(updateFlowResponseGraphEdgesItemTargetMax),
-  "label": zod.string().max(updateFlowResponseGraphEdgesItemLabelMax).nullish()
+  "label": zod.string().max(updateFlowResponseGraphEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(updateFlowResponseGraphEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(updateFlowResponseGraphEdgesItemTargetHandleMax).nullish()
 })).max(updateFlowResponseGraphEdgesMax)
 }),
+  "draftVersion": zod.number().int().min(1),
+  "publishedVersion": zod.number().int().min(updateFlowResponsePublishedVersionMin),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -491,6 +838,277 @@ export const DeleteFlowParams = zod.object({
 
 export const DeleteFlowResponse = zod.object({
   "deleted": zod.boolean()
+})
+
+
+/**
+ * @summary Validate a flow graph before publishing
+ */
+export const ValidateFlowParams = zod.object({
+  "flowId": zod.coerce.string().uuid()
+})
+
+export const validateFlowBodyNodesItemIdMax = 80;
+
+export const validateFlowBodyNodesItemDataLabelMax = 120;
+
+export const validateFlowBodyNodesItemDataTextMax = 2000;
+
+export const validateFlowBodyNodesItemDataConditionMax = 500;
+
+export const validateFlowBodyNodesItemDataButtonsItemIdMax = 80;
+
+export const validateFlowBodyNodesItemDataButtonsItemLabelMax = 80;
+
+export const validateFlowBodyNodesItemDataButtonsItemTargetIdMax = 80;
+
+export const validateFlowBodyNodesItemDataButtonsMax = 5;
+
+export const validateFlowBodyNodesItemDataTriggerTypeDefault = `conversation_start`;
+export const validateFlowBodyNodesItemDataKeywordsItemMax = 100;
+
+export const validateFlowBodyNodesItemDataKeywordsMax = 20;
+
+export const validateFlowBodyNodesItemDataMessageTypeDefault = `text`;
+export const validateFlowBodyNodesItemDataConditionFieldMax = 160;
+
+export const validateFlowBodyNodesItemDataConditionValueMax = 500;
+
+export const validateFlowBodyNodesItemDataTagNameMax = 80;
+
+export const validateFlowBodyNodesItemDataFieldNameMax = 120;
+
+export const validateFlowBodyNodesItemDataFieldValueMax = 1000;
+
+export const validateFlowBodyNodesItemDataDelaySecondsMin = 0;
+export const validateFlowBodyNodesItemDataDelaySecondsMax = 86400;
+
+export const validateFlowBodyNodesItemDataAiPromptMax = 2000;
+
+export const validateFlowBodyNodesItemDataHandoffNoteMax = 1000;
+
+export const validateFlowBodyNodesMax = 200;
+
+export const validateFlowBodyEdgesItemIdMax = 160;
+
+export const validateFlowBodyEdgesItemSourceMax = 80;
+
+export const validateFlowBodyEdgesItemTargetMax = 80;
+
+export const validateFlowBodyEdgesItemLabelMax = 120;
+
+export const validateFlowBodyEdgesItemSourceHandleMax = 120;
+
+export const validateFlowBodyEdgesItemTargetHandleMax = 120;
+
+export const validateFlowBodyEdgesMax = 500;
+
+
+
+export const ValidateFlowBody = zod.object({
+  "nodes": zod.array(zod.object({
+  "id": zod.string().min(1).max(validateFlowBodyNodesItemIdMax),
+  "type": zod.enum(['trigger', 'message', 'condition', 'add_tag', 'update_field', 'delay', 'ai_response', 'human_handoff', 'end']),
+  "position": zod.object({
+  "x": zod.number(),
+  "y": zod.number()
+}),
+  "data": zod.object({
+  "label": zod.string().min(1).max(validateFlowBodyNodesItemDataLabelMax),
+  "text": zod.string().max(validateFlowBodyNodesItemDataTextMax).nullish(),
+  "condition": zod.string().max(validateFlowBodyNodesItemDataConditionMax).nullish(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().max(validateFlowBodyNodesItemDataButtonsItemIdMax).nullish(),
+  "label": zod.string().min(1).max(validateFlowBodyNodesItemDataButtonsItemLabelMax),
+  "targetId": zod.string().max(validateFlowBodyNodesItemDataButtonsItemTargetIdMax).nullish()
+})).max(validateFlowBodyNodesItemDataButtonsMax).optional(),
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(validateFlowBodyNodesItemDataTriggerTypeDefault),
+  "keywords": zod.array(zod.string().min(1).max(validateFlowBodyNodesItemDataKeywordsItemMax)).max(validateFlowBodyNodesItemDataKeywordsMax).optional(),
+  "messageType": zod.enum(['text', 'buttons']).default(validateFlowBodyNodesItemDataMessageTypeDefault),
+  "conditionField": zod.string().max(validateFlowBodyNodesItemDataConditionFieldMax).nullish(),
+  "conditionOperator": zod.union([zod.literal('equals'),zod.literal('not_equals'),zod.literal('contains'),zod.literal('not_contains'),zod.literal('exists'),zod.literal('not_exists'),zod.literal(null)]).nullish(),
+  "conditionValue": zod.string().max(validateFlowBodyNodesItemDataConditionValueMax).nullish(),
+  "tagName": zod.string().max(validateFlowBodyNodesItemDataTagNameMax).nullish(),
+  "fieldName": zod.string().max(validateFlowBodyNodesItemDataFieldNameMax).nullish(),
+  "fieldValue": zod.string().max(validateFlowBodyNodesItemDataFieldValueMax).nullish(),
+  "delaySeconds": zod.number().int().min(validateFlowBodyNodesItemDataDelaySecondsMin).max(validateFlowBodyNodesItemDataDelaySecondsMax).nullish(),
+  "aiPrompt": zod.string().max(validateFlowBodyNodesItemDataAiPromptMax).nullish(),
+  "handoffNote": zod.string().max(validateFlowBodyNodesItemDataHandoffNoteMax).nullish()
+})
+})).max(validateFlowBodyNodesMax),
+  "edges": zod.array(zod.object({
+  "id": zod.string().min(1).max(validateFlowBodyEdgesItemIdMax),
+  "source": zod.string().min(1).max(validateFlowBodyEdgesItemSourceMax),
+  "target": zod.string().min(1).max(validateFlowBodyEdgesItemTargetMax),
+  "label": zod.string().max(validateFlowBodyEdgesItemLabelMax).nullish(),
+  "sourceHandle": zod.string().max(validateFlowBodyEdgesItemSourceHandleMax).nullish(),
+  "targetHandle": zod.string().max(validateFlowBodyEdgesItemTargetHandleMax).nullish()
+})).max(validateFlowBodyEdgesMax)
+})
+
+export const ValidateFlowResponse = zod.object({
+  "valid": zod.boolean(),
+  "issues": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Start an isolated test run of the saved draft
+ */
+export const StartFlowSimulationParams = zod.object({
+  "flowId": zod.coerce.string().uuid()
+})
+
+export const startFlowSimulationBodyTriggerTypeDefault = `conversation_start`;
+export const startFlowSimulationBodyMessageMax = 2000;
+
+
+
+export const StartFlowSimulationBody = zod.object({
+  "triggerType": zod.enum(['conversation_start', 'keyword', 'incoming_message']).default(startFlowSimulationBodyTriggerTypeDefault),
+  "message": zod.string().max(startFlowSimulationBodyMessageMax).nullish(),
+  "context": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+
+export const startFlowSimulationResponseMessagesItemButtonsItemIdMax = 80;
+
+export const startFlowSimulationResponseMessagesItemButtonsItemLabelMax = 80;
+
+export const startFlowSimulationResponseMessagesItemButtonsItemTargetIdMax = 80;
+
+
+
+export const StartFlowSimulationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "flowId": zod.string().uuid(),
+  "mode": zod.enum(['simulation']),
+  "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
+  "flowVersion": zod.number().int().min(1),
+  "currentNodeId": zod.string().nullable(),
+  "context": zod.record(zod.string(), zod.unknown()),
+  "messages": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "text": zod.string(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().max(startFlowSimulationResponseMessagesItemButtonsItemIdMax).nullish(),
+  "label": zod.string().min(1).max(startFlowSimulationResponseMessagesItemButtonsItemLabelMax),
+  "targetId": zod.string().max(startFlowSimulationResponseMessagesItemButtonsItemTargetIdMax).nullish()
+}))
+})),
+  "trace": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "nodeType": zod.string(),
+  "status": zod.string(),
+  "message": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown())
+})),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a simulation owned by the current workspace
+ */
+export const GetFlowSimulationParams = zod.object({
+  "simulationId": zod.coerce.string().uuid()
+})
+
+
+export const getFlowSimulationResponseMessagesItemButtonsItemIdMax = 80;
+
+export const getFlowSimulationResponseMessagesItemButtonsItemLabelMax = 80;
+
+export const getFlowSimulationResponseMessagesItemButtonsItemTargetIdMax = 80;
+
+
+
+export const GetFlowSimulationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "flowId": zod.string().uuid(),
+  "mode": zod.enum(['simulation']),
+  "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
+  "flowVersion": zod.number().int().min(1),
+  "currentNodeId": zod.string().nullable(),
+  "context": zod.record(zod.string(), zod.unknown()),
+  "messages": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "text": zod.string(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().max(getFlowSimulationResponseMessagesItemButtonsItemIdMax).nullish(),
+  "label": zod.string().min(1).max(getFlowSimulationResponseMessagesItemButtonsItemLabelMax),
+  "targetId": zod.string().max(getFlowSimulationResponseMessagesItemButtonsItemTargetIdMax).nullish()
+}))
+})),
+  "trace": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "nodeType": zod.string(),
+  "status": zod.string(),
+  "message": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown())
+})),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Continue a test run with a visitor message or button choice
+ */
+export const SendSimulationInputParams = zod.object({
+  "simulationId": zod.coerce.string().uuid()
+})
+
+export const sendSimulationInputBodyMessageMax = 2000;
+
+export const sendSimulationInputBodyButtonIdMax = 80;
+
+
+
+export const SendSimulationInputBody = zod.object({
+  "message": zod.string().max(sendSimulationInputBodyMessageMax).nullish(),
+  "buttonId": zod.string().max(sendSimulationInputBodyButtonIdMax).nullish()
+})
+
+
+export const sendSimulationInputResponseMessagesItemButtonsItemIdMax = 80;
+
+export const sendSimulationInputResponseMessagesItemButtonsItemLabelMax = 80;
+
+export const sendSimulationInputResponseMessagesItemButtonsItemTargetIdMax = 80;
+
+
+
+export const SendSimulationInputResponse = zod.object({
+  "id": zod.string().uuid(),
+  "flowId": zod.string().uuid(),
+  "mode": zod.enum(['simulation']),
+  "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
+  "flowVersion": zod.number().int().min(1),
+  "currentNodeId": zod.string().nullable(),
+  "context": zod.record(zod.string(), zod.unknown()),
+  "messages": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "text": zod.string(),
+  "buttons": zod.array(zod.object({
+  "id": zod.string().max(sendSimulationInputResponseMessagesItemButtonsItemIdMax).nullish(),
+  "label": zod.string().min(1).max(sendSimulationInputResponseMessagesItemButtonsItemLabelMax),
+  "targetId": zod.string().max(sendSimulationInputResponseMessagesItemButtonsItemTargetIdMax).nullish()
+}))
+})),
+  "trace": zod.array(zod.object({
+  "nodeId": zod.string(),
+  "nodeType": zod.string(),
+  "status": zod.string(),
+  "message": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown())
+})),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 

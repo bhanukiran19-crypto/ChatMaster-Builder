@@ -6,14 +6,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_session
-from models import AuditEvent, Flow, Workspace, WorkspaceMember
+from models import AuditEvent, Flow, FlowExecution, Workspace, WorkspaceMember
 from schemas import (
     CurrentUser,
     DashboardSummary,
     DeleteFlowResult,
+    FlowExecutionOut,
+    FlowGraph,
     FlowInput,
     FlowOut,
     FlowUpdate,
+    FlowValidation,
+    SimulationInput,
+    SimulationStartInput,
+    validate_publishable_graph,
+)
+from workflow_engine import (
+    WorkflowRuntimeError,
+    continue_simulation,
+    start_simulation,
 )
 
 router = APIRouter()
@@ -150,6 +161,8 @@ def create_flow(
         name=payload.name,
         description=payload.description,
         graph=payload.graph.model_dump(mode="json"),
+        draft_version=1,
+        published_version=0,
     )
     session.add(flow)
     session.flush()
@@ -174,21 +187,170 @@ def update_flow(
 ) -> Flow:
     flow = workspace_flow(session, actor, flow_id)
     changes = payload.model_dump(exclude_unset=True, mode="json")
+    changed_fields = set(changes)
+    requested_status = changes.pop("status", None)
+    graph_changed = "graph" in changes
     for field, value in changes.items():
         if field == "graph" and payload.graph is not None:
             value = payload.graph.model_dump(mode="json")
         setattr(flow, field, value)
-    if flow.status == "published":
-        node_types = {node.get("type") for node in (flow.graph or {}).get("nodes", [])}
-        if "trigger" not in node_types or "message" not in node_types:
+
+    if graph_changed:
+        flow.draft_version += 1
+
+    if requested_status == "published":
+        graph = FlowGraph.model_validate(flow.graph)
+        issues = validate_publishable_graph(graph)
+        if issues:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A published flow needs at least one trigger and one message node.",
+                detail={"message": "The flow needs changes before it can be published.", "issues": issues},
             )
-    audit(session, actor, "flow.updated", flow.id, {"fields": sorted(changes)})
+        flow.published_graph = graph.model_dump(mode="json")
+        flow.published_version += 1
+        flow.status = "published"
+    elif requested_status == "draft":
+        flow.status = "draft"
+    elif graph_changed and flow.status == "published":
+        # Editing a live flow stages a draft; existing executions retain the
+        # immutable published snapshot until the owner publishes again.
+        flow.status = "draft"
+
+    audit(session, actor, "flow.updated", flow.id, {"fields": sorted(changed_fields)})
     session.commit()
     session.refresh(flow)
     return flow
+
+
+@router.post("/flows/{flow_id}/validate", response_model=FlowValidation)
+def validate_flow(
+    flow_id: uuid.UUID,
+    graph: FlowGraph,
+    session: SessionDep,
+    actor: ActorDep,
+) -> FlowValidation:
+    workspace_flow(session, actor, flow_id)
+    issues = validate_publishable_graph(graph)
+    return FlowValidation(valid=not issues, issues=issues)
+
+
+@router.post(
+    "/flows/{flow_id}/simulations",
+    response_model=FlowExecutionOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def start_flow_simulation(
+    flow_id: uuid.UUID,
+    payload: SimulationStartInput,
+    session: SessionDep,
+    actor: ActorDep,
+) -> FlowExecution:
+    flow = workspace_flow(session, actor, flow_id)
+    graph = FlowGraph.model_validate(flow.graph)
+    state = start_simulation(
+        graph.model_dump(mode="json"),
+        trigger_type=payload.triggerType,
+        message=payload.message,
+        context=payload.context,
+    )
+    execution = FlowExecution(
+        workspace_id=actor.workspace.id,
+        flow_id=flow.id,
+        mode="simulation",
+        status=state["status"],
+        flow_version=flow.draft_version,
+        graph_snapshot=graph.model_dump(mode="json"),
+        current_node_id=state["current_node_id"],
+        context=state["context"],
+        messages=state["messages"],
+        trace=state["trace"],
+        error=state["error"],
+    )
+    session.add(execution)
+    audit(
+        session,
+        actor,
+        "flow.simulation_started",
+        execution.id,
+        {"flowId": str(flow.id), "flowVersion": flow.draft_version},
+    )
+    session.commit()
+    session.refresh(execution)
+    return execution
+
+
+def workspace_simulation(
+    session: Session,
+    actor: Actor,
+    simulation_id: uuid.UUID,
+) -> FlowExecution:
+    execution = session.scalar(
+        select(FlowExecution).where(
+            FlowExecution.id == simulation_id,
+            FlowExecution.workspace_id == actor.workspace.id,
+            FlowExecution.mode == "simulation",
+        )
+    )
+    if execution is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    return execution
+
+
+@router.get("/simulations/{simulation_id}", response_model=FlowExecutionOut)
+def get_flow_simulation(
+    simulation_id: uuid.UUID,
+    session: SessionDep,
+    actor: ActorDep,
+) -> FlowExecution:
+    return workspace_simulation(session, actor, simulation_id)
+
+
+@router.post("/simulations/{simulation_id}/input", response_model=FlowExecutionOut)
+def send_simulation_input(
+    simulation_id: uuid.UUID,
+    payload: SimulationInput,
+    session: SessionDep,
+    actor: ActorDep,
+) -> FlowExecution:
+    execution = workspace_simulation(session, actor, simulation_id)
+    if execution.status != "awaiting_input":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This simulation is not waiting for visitor input.",
+        )
+    try:
+        state = continue_simulation(
+            execution.graph_snapshot,
+            {
+                "status": execution.status,
+                "current_node_id": execution.current_node_id,
+                "context": execution.context,
+                "messages": execution.messages,
+                "trace": execution.trace,
+                "error": execution.error,
+            },
+            message=payload.message,
+            button_id=payload.buttonId,
+        )
+    except WorkflowRuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    execution.status = state["status"]
+    execution.current_node_id = state["current_node_id"]
+    execution.context = state["context"]
+    execution.messages = state["messages"]
+    execution.trace = state["trace"]
+    execution.error = state["error"]
+    audit(
+        session,
+        actor,
+        "flow.simulation_input",
+        execution.id,
+        {"inputType": "button" if payload.buttonId else "message"},
+    )
+    session.commit()
+    session.refresh(execution)
+    return execution
 
 
 @router.delete("/flows/{flow_id}", response_model=DeleteFlowResult)

@@ -157,6 +157,128 @@ paths:
           description: Authentication required
         "404":
           description: Flow not found
+  /flows/{flowId}/validate:
+    parameters:
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: validateFlow
+      tags: [flows]
+      summary: Validate a flow graph before publishing
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlowGraph"
+      responses:
+        "200":
+          description: Flow validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowValidation"
+        "401":
+          description: Authentication required
+        "404":
+          description: Flow not found
+  /flows/{flowId}/simulations:
+    parameters:
+      - name: flowId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: startFlowSimulation
+      tags: [flows]
+      summary: Start an isolated test run of the saved draft
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationStartInput"
+      responses:
+        "201":
+          description: Simulation state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowExecution"
+        "401":
+          description: Authentication required
+        "404":
+          description: Flow not found
+        "422":
+          description: Invalid simulation request
+  /simulations/{simulationId}:
+    parameters:
+      - name: simulationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getFlowSimulation
+      tags: [flows]
+      summary: Get a simulation owned by the current workspace
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Simulation state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowExecution"
+        "401":
+          description: Authentication required
+        "404":
+          description: Simulation not found
+  /simulations/{simulationId}/input:
+    parameters:
+      - name: simulationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: sendSimulationInput
+      tags: [flows]
+      summary: Continue a test run with a visitor message or button choice
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationInput"
+      responses:
+        "200":
+          description: Updated simulation state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlowExecution"
+        "401":
+          description: Authentication required
+        "404":
+          description: Simulation not found
+        "409":
+          description: Simulation is not waiting for input
   /healthz:
     get:
       operationId: healthCheck
@@ -215,7 +337,7 @@ components:
             $ref: "#/components/schemas/Flow"
     Flow:
       type: object
-      required: [id, name, description, status, graph, createdAt, updatedAt]
+      required: [id, name, description, status, graph, draftVersion, publishedVersion, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -229,6 +351,12 @@ components:
           enum: [draft, published]
         graph:
           $ref: "#/components/schemas/FlowGraph"
+        draftVersion:
+          type: integer
+          minimum: 1
+        publishedVersion:
+          type: integer
+          minimum: 0
         createdAt:
           type: string
           format: date-time
@@ -288,7 +416,7 @@ components:
           maxLength: 80
         type:
           type: string
-          enum: [trigger, message, condition]
+          enum: [trigger, message, condition, add_tag, update_field, delay, ai_response, human_handoff, end]
         position:
           $ref: "#/components/schemas/FlowPosition"
         data:
@@ -320,16 +448,63 @@ components:
           maxItems: 5
           items:
             $ref: "#/components/schemas/FlowButton"
+        triggerType:
+          type: string
+          enum: [conversation_start, keyword, incoming_message]
+          default: conversation_start
+        keywords:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+        messageType:
+          type: string
+          enum: [text, buttons]
+          default: text
+        conditionField:
+          type: ["string", "null"]
+          maxLength: 160
+        conditionOperator:
+          type: ["string", "null"]
+          enum: [equals, not_equals, contains, not_contains, exists, not_exists, null]
+        conditionValue:
+          type: ["string", "null"]
+          maxLength: 500
+        tagName:
+          type: ["string", "null"]
+          maxLength: 80
+        fieldName:
+          type: ["string", "null"]
+          maxLength: 120
+        fieldValue:
+          type: ["string", "null"]
+          maxLength: 1000
+        delaySeconds:
+          type: ["integer", "null"]
+          minimum: 0
+          maximum: 86400
+        aiPrompt:
+          type: ["string", "null"]
+          maxLength: 2000
+        handoffNote:
+          type: ["string", "null"]
+          maxLength: 1000
     FlowButton:
       type: object
       required: [label]
       properties:
+        id:
+          type: ["string", "null"]
+          maxLength: 80
         label:
           type: string
           minLength: 1
           maxLength: 80
         targetId:
           type: ["string", "null"]
+          maxLength: 80
     FlowEdge:
       type: object
       required: [id, source, target]
@@ -349,6 +524,111 @@ components:
         label:
           type: ["string", "null"]
           maxLength: 120
+        sourceHandle:
+          type: ["string", "null"]
+          maxLength: 120
+        targetHandle:
+          type: ["string", "null"]
+          maxLength: 120
+    FlowValidation:
+      type: object
+      required: [valid, issues]
+      properties:
+        valid:
+          type: boolean
+        issues:
+          type: array
+          items:
+            type: string
+    SimulationStartInput:
+      type: object
+      properties:
+        triggerType:
+          type: string
+          enum: [conversation_start, keyword, incoming_message]
+          default: conversation_start
+        message:
+          type: ["string", "null"]
+          maxLength: 2000
+        context:
+          type: object
+          additionalProperties: true
+    SimulationInput:
+      type: object
+      properties:
+        message:
+          type: ["string", "null"]
+          maxLength: 2000
+        buttonId:
+          type: ["string", "null"]
+          maxLength: 80
+    FlowMessage:
+      type: object
+      required: [nodeId, text, buttons]
+      properties:
+        nodeId:
+          type: string
+        text:
+          type: string
+        buttons:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlowButton"
+    FlowTraceEntry:
+      type: object
+      required: [nodeId, nodeType, status, message, details]
+      properties:
+        nodeId:
+          type: string
+        nodeType:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    FlowExecution:
+      type: object
+      required: [id, flowId, mode, status, flowVersion, currentNodeId, context, messages, trace, error, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        flowId:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [simulation]
+        status:
+          type: string
+          enum: [awaiting_input, waiting_for_agent, completed, failed]
+        flowVersion:
+          type: integer
+          minimum: 1
+        currentNodeId:
+          type: ["string", "null"]
+        context:
+          type: object
+          additionalProperties: true
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlowMessage"
+        trace:
+          type: array
+          items:
+            $ref: "#/components/schemas/FlowTraceEntry"
+        error:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     DeleteFlowResult:
       type: object
       required: [deleted]

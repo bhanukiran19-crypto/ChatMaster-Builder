@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FlowButton } from './flowButton';
+import type { FlowNodeDataConditionOperator } from './flowNodeDataConditionOperator';
+import type { FlowNodeDataMessageType } from './flowNodeDataMessageType';
+import type { FlowNodeDataTriggerType } from './flowNodeDataTriggerType';
 
 export interface FlowNodeData {
   /**
@@ -25,4 +28,55 @@ export interface FlowNodeData {
   condition?: string | null;
   /** @maxItems 5 */
   buttons?: FlowButton[];
+  triggerType?: FlowNodeDataTriggerType;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  keywords?: string[];
+  messageType?: FlowNodeDataMessageType;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  conditionField?: string | null;
+  /** @nullable */
+  conditionOperator?: FlowNodeDataConditionOperator;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  conditionValue?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  tagName?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  fieldName?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  fieldValue?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 86400
+     * @nullable
+     */
+  delaySeconds?: number | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  aiPrompt?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  handoffNote?: string | null;
 }

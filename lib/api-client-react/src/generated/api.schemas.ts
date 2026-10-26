@@ -38,6 +38,12 @@ export const FlowNodeType = {
   trigger: 'trigger',
   message: 'message',
   condition: 'condition',
+  add_tag: 'add_tag',
+  update_field: 'update_field',
+  delay: 'delay',
+  ai_response: 'ai_response',
+  human_handoff: 'human_handoff',
+  end: 'end',
 } as const;
 
 export interface FlowPosition {
@@ -47,13 +53,53 @@ export interface FlowPosition {
 
 export interface FlowButton {
   /**
+     * @maxLength 80
+     * @nullable
+     */
+  id?: string | null;
+  /**
      * @minLength 1
      * @maxLength 80
      */
   label: string;
-  /** @nullable */
+  /**
+     * @maxLength 80
+     * @nullable
+     */
   targetId?: string | null;
 }
+
+export type FlowNodeDataTriggerType = typeof FlowNodeDataTriggerType[keyof typeof FlowNodeDataTriggerType];
+
+
+export const FlowNodeDataTriggerType = {
+  conversation_start: 'conversation_start',
+  keyword: 'keyword',
+  incoming_message: 'incoming_message',
+} as const;
+
+export type FlowNodeDataMessageType = typeof FlowNodeDataMessageType[keyof typeof FlowNodeDataMessageType];
+
+
+export const FlowNodeDataMessageType = {
+  text: 'text',
+  buttons: 'buttons',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FlowNodeDataConditionOperator = typeof FlowNodeDataConditionOperator[keyof typeof FlowNodeDataConditionOperator] | null;
+
+
+export const FlowNodeDataConditionOperator = {
+  equals: 'equals',
+  not_equals: 'not_equals',
+  contains: 'contains',
+  not_contains: 'not_contains',
+  exists: 'exists',
+  not_exists: 'not_exists',
+} as const;
 
 export interface FlowNodeData {
   /**
@@ -73,6 +119,57 @@ export interface FlowNodeData {
   condition?: string | null;
   /** @maxItems 5 */
   buttons?: FlowButton[];
+  triggerType?: FlowNodeDataTriggerType;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  keywords?: string[];
+  messageType?: FlowNodeDataMessageType;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  conditionField?: string | null;
+  /** @nullable */
+  conditionOperator?: FlowNodeDataConditionOperator;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  conditionValue?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  tagName?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  fieldName?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  fieldValue?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 86400
+     * @nullable
+     */
+  delaySeconds?: number | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  aiPrompt?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  handoffNote?: string | null;
 }
 
 export interface FlowNode {
@@ -107,6 +204,16 @@ export interface FlowEdge {
      * @nullable
      */
   label?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  sourceHandle?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  targetHandle?: string | null;
 }
 
 export interface FlowGraph {
@@ -123,6 +230,10 @@ export interface Flow {
   description: string | null;
   status: FlowStatus;
   graph: FlowGraph;
+  /** @minimum 1 */
+  draftVersion: number;
+  /** @minimum 0 */
+  publishedVersion: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -172,6 +283,98 @@ export interface FlowUpdate {
   description?: string | null;
   status?: FlowUpdateStatus;
   graph?: FlowGraph;
+}
+
+export interface FlowValidation {
+  valid: boolean;
+  issues: string[];
+}
+
+export type SimulationStartInputTriggerType = typeof SimulationStartInputTriggerType[keyof typeof SimulationStartInputTriggerType];
+
+
+export const SimulationStartInputTriggerType = {
+  conversation_start: 'conversation_start',
+  keyword: 'keyword',
+  incoming_message: 'incoming_message',
+} as const;
+
+export type SimulationStartInputContext = { [key: string]: unknown };
+
+export interface SimulationStartInput {
+  triggerType?: SimulationStartInputTriggerType;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  message?: string | null;
+  context?: SimulationStartInputContext;
+}
+
+export interface SimulationInput {
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  message?: string | null;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  buttonId?: string | null;
+}
+
+export interface FlowMessage {
+  nodeId: string;
+  text: string;
+  buttons: FlowButton[];
+}
+
+export type FlowTraceEntryDetails = { [key: string]: unknown };
+
+export interface FlowTraceEntry {
+  nodeId: string;
+  nodeType: string;
+  status: string;
+  message: string;
+  details: FlowTraceEntryDetails;
+}
+
+export type FlowExecutionMode = typeof FlowExecutionMode[keyof typeof FlowExecutionMode];
+
+
+export const FlowExecutionMode = {
+  simulation: 'simulation',
+} as const;
+
+export type FlowExecutionStatus = typeof FlowExecutionStatus[keyof typeof FlowExecutionStatus];
+
+
+export const FlowExecutionStatus = {
+  awaiting_input: 'awaiting_input',
+  waiting_for_agent: 'waiting_for_agent',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export type FlowExecutionContext = { [key: string]: unknown };
+
+export interface FlowExecution {
+  id: string;
+  flowId: string;
+  mode: FlowExecutionMode;
+  status: FlowExecutionStatus;
+  /** @minimum 1 */
+  flowVersion: number;
+  /** @nullable */
+  currentNodeId: string | null;
+  context: FlowExecutionContext;
+  messages: FlowMessage[];
+  trace: FlowTraceEntry[];
+  /** @nullable */
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DeleteFlowResult {

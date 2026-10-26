@@ -13,4 +13,10 @@ export const FlowNodeType = {
   trigger: 'trigger',
   message: 'message',
   condition: 'condition',
+  add_tag: 'add_tag',
+  update_field: 'update_field',
+  delay: 'delay',
+  ai_response: 'ai_response',
+  human_handoff: 'human_handoff',
+  end: 'end',
 } as const;
