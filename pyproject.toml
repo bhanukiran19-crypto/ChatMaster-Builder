@@ -1,10 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "chatmaster-api"
 version = "0.1.0"
-description = "Add your description here"
-authors = [
-    { name = "Bhanukiran1601", email = "67149459-bhanukiran1601@users.noreply.replit.com" }
-]
+description = "FastAPI service for the ChatMaster chatbot automation platform"
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.1",
@@ -17,9 +14,5 @@ dependencies = [
     "uvicorn>=0.54.0",
 ]
 
-[project.scripts]
-repl-nix-workspace = "repl_nix_workspace:main"
-
-[build-system]
-requires = ["uv_build>=0.13.4,<0.14.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false

@@ -13,14 +13,20 @@ The public landing page contains an illustrative flow preview. It is not an acti
 
 1. Use the ChatMaster web and API Server workflows in Replit.
 2. Replit PostgreSQL supplies `DATABASE_URL`; do not copy it into source files. Clerk keys are managed through Replit Auth setup and are not checked in.
-3. Apply the development database migration from the workspace root:
+3. If Python dependencies need to be restored, run this from the workspace root:
+
+   ```sh
+   uv pip install --python .pythonlibs/bin/python --requirements artifacts/api-server/fastapi/requirements.txt
+   ```
+
+4. Apply the development database migration from the workspace root:
 
    ```sh
    cd artifacts/api-server/fastapi
    ../../../.pythonlibs/bin/python -m alembic upgrade head
    ```
 
-4. Open the app preview, create an account, and create your first flow. Development and published Clerk users are separate.
+5. Open the app preview, create an account, and create your first flow. Development and published Clerk users are separate.
 
 Python dependencies are listed in `artifacts/api-server/fastapi/requirements.txt`. The API Server workflow runs the FastAPI service on loopback and exposes it only through the Clerk-verifying gateway. FastAPI is not directly reachable from the browser.
 

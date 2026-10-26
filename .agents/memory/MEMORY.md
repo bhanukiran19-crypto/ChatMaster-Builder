@@ -1,0 +1,1 @@
+- [Clerk SDK version alignment](clerk-sdk-version.md) — verify the installed React SDK exports and its shared dependency versions before applying Clerk examples.
