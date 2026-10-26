@@ -26,6 +26,7 @@ def start_simulation(
         "messages": [],
         "trace": [],
         "error": None,
+        "steps_executed": 0,
     }
     nodes = graph.get("nodes", [])
     matches = [
@@ -123,13 +124,13 @@ def _trigger_matches(data: dict[str, Any], trigger_type: str, message: str | Non
 def _run_from(graph: dict[str, Any], first_node_id: str, state: dict[str, Any]) -> None:
     nodes = {node["id"]: node for node in graph.get("nodes", [])}
     current_id: str | None = first_node_id
-    visited_steps = 0
+    state.setdefault("steps_executed", 0)
 
     while current_id:
-        visited_steps += 1
-        if visited_steps > MAX_EXECUTION_STEPS:
+        if state["steps_executed"] >= MAX_EXECUTION_STEPS:
             _fail(state, current_id, "Execution stopped after reaching the 100-step safety limit.")
             return
+        state["steps_executed"] += 1
 
         node = nodes.get(current_id)
         if node is None:

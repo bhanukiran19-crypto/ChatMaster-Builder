@@ -971,6 +971,9 @@ export const StartFlowSimulationBody = zod.object({
 })
 
 
+export const startFlowSimulationResponseStepsExecutedMin = 0;
+export const startFlowSimulationResponseStepsExecutedMax = 100;
+
 export const startFlowSimulationResponseMessagesItemButtonsItemIdMax = 80;
 
 export const startFlowSimulationResponseMessagesItemButtonsItemLabelMax = 80;
@@ -985,6 +988,7 @@ export const StartFlowSimulationResponse = zod.object({
   "mode": zod.enum(['simulation']),
   "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
   "flowVersion": zod.number().int().min(1),
+  "stepsExecuted": zod.number().int().min(startFlowSimulationResponseStepsExecutedMin).max(startFlowSimulationResponseStepsExecutedMax),
   "currentNodeId": zod.string().nullable(),
   "context": zod.record(zod.string(), zod.unknown()),
   "messages": zod.array(zod.object({
@@ -1017,6 +1021,9 @@ export const GetFlowSimulationParams = zod.object({
 })
 
 
+export const getFlowSimulationResponseStepsExecutedMin = 0;
+export const getFlowSimulationResponseStepsExecutedMax = 100;
+
 export const getFlowSimulationResponseMessagesItemButtonsItemIdMax = 80;
 
 export const getFlowSimulationResponseMessagesItemButtonsItemLabelMax = 80;
@@ -1031,6 +1038,7 @@ export const GetFlowSimulationResponse = zod.object({
   "mode": zod.enum(['simulation']),
   "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
   "flowVersion": zod.number().int().min(1),
+  "stepsExecuted": zod.number().int().min(getFlowSimulationResponseStepsExecutedMin).max(getFlowSimulationResponseStepsExecutedMax),
   "currentNodeId": zod.string().nullable(),
   "context": zod.record(zod.string(), zod.unknown()),
   "messages": zod.array(zod.object({
@@ -1074,6 +1082,9 @@ export const SendSimulationInputBody = zod.object({
 })
 
 
+export const sendSimulationInputResponseStepsExecutedMin = 0;
+export const sendSimulationInputResponseStepsExecutedMax = 100;
+
 export const sendSimulationInputResponseMessagesItemButtonsItemIdMax = 80;
 
 export const sendSimulationInputResponseMessagesItemButtonsItemLabelMax = 80;
@@ -1088,6 +1099,7 @@ export const SendSimulationInputResponse = zod.object({
   "mode": zod.enum(['simulation']),
   "status": zod.enum(['awaiting_input', 'waiting_for_agent', 'completed', 'failed']),
   "flowVersion": zod.number().int().min(1),
+  "stepsExecuted": zod.number().int().min(sendSimulationInputResponseStepsExecutedMin).max(sendSimulationInputResponseStepsExecutedMax),
   "currentNodeId": zod.string().nullable(),
   "context": zod.record(zod.string(), zod.unknown()),
   "messages": zod.array(zod.object({

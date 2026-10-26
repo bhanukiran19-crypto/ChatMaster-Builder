@@ -91,6 +91,7 @@ class FlowExecution(Base):
     mode: Mapped[str] = mapped_column(String(20), nullable=False, default="simulation")
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="awaiting_input")
     flow_version: Mapped[int] = mapped_column(nullable=False)
+    steps_executed: Mapped[int] = mapped_column(nullable=False, default=0)
     graph_snapshot: Mapped[dict] = mapped_column(JSON_DOCUMENT, nullable=False)
     current_node_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     context: Mapped[dict] = mapped_column(JSON_DOCUMENT, nullable=False, default=dict)

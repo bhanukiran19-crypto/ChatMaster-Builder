@@ -591,7 +591,7 @@ components:
           additionalProperties: true
     FlowExecution:
       type: object
-      required: [id, flowId, mode, status, flowVersion, currentNodeId, context, messages, trace, error, createdAt, updatedAt]
+      required: [id, flowId, mode, status, flowVersion, stepsExecuted, currentNodeId, context, messages, trace, error, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -608,6 +608,10 @@ components:
         flowVersion:
           type: integer
           minimum: 1
+        stepsExecuted:
+          type: integer
+          minimum: 0
+          maximum: 100
         currentNodeId:
           type: ["string", "null"]
         context:

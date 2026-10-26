@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ClerkProvider, Show, SignIn, SignUp, useClerk } from '@clerk/react';
 import { shadcn } from '@clerk/themes';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
@@ -12,14 +12,18 @@ import {
   FlowNodeType, getGetCurrentUserQueryKey, getGetDashboardSummaryQueryKey,
   getGetFlowQueryKey, getHealthCheckQueryKey, getListFlowsQueryKey,
   useCreateFlow, useDeleteFlow, useGetCurrentUser, useGetDashboardSummary,
-  useGetFlow, useHealthCheck, useListFlows, useUpdateFlow,
+  useGetFlow, useHealthCheck, useListFlows, useUpdateFlow, useValidateFlow,
 } from '@workspace/api-client-react';
-import type { Flow, FlowButton, FlowEdge, FlowGraph, FlowNode } from '@workspace/api-client-react';
+import type { Flow, FlowGraph, FlowNode, FlowNodeData } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Router as WouterRouter, Switch, useLocation, useParams } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { FlowBuilderCanvas } from '@/features/flow-builder/FlowBuilderCanvas';
+import { FlowNodeInspector } from '@/features/flow-builder/FlowNodeInspector';
+import { FlowSimulator } from '@/features/flow-builder/FlowSimulator';
 import NotFound from '@/pages/not-found';
+import '@xyflow/react/dist/style.css';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -328,13 +332,24 @@ function FlowsPage() {
 const nodeTypeLabels: Record<string, string> = { trigger: 'Trigger', message: 'Message', condition: 'Condition' };
 const nodeTypeColors: Record<string, string> = { trigger: '#2f8068', message: '#c97751', condition: '#847b47' };
 function makeId() { return globalThis.crypto?.randomUUID?.() ?? `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
-function defaultNode(type: FlowNode['type'], index: number): FlowNode {
+function defaultNode(type: FlowNode['type'], index: number, position?: FlowNode['position']): FlowNode {
   const defaults: Record<FlowNode['type'], FlowNode['data']> = {
-    trigger: { label: 'Conversation starts', text: '' },
-    message: { label: 'Send a message', text: 'Hi there. How can we help you today?', buttons: [] },
-    condition: { label: 'Check a condition', condition: 'Customer has an order question' },
+    trigger: { label: 'Conversation starts', triggerType: 'conversation_start', keywords: [], buttons: [] },
+    message: { label: 'Send a message', text: 'Hi there. How can we help you today?', messageType: 'text', buttons: [] },
+    condition: { label: 'Check a condition', conditionField: 'contactFields.plan', conditionOperator: 'exists', conditionValue: null },
+    add_tag: { label: 'Add a contact tag', tagName: '' },
+    update_field: { label: 'Update a contact field', fieldName: '', fieldValue: '' },
+    delay: { label: 'Wait', delaySeconds: 30 },
+    ai_response: { label: 'AI response', aiPrompt: '' },
+    human_handoff: { label: 'Hand off to a teammate', handoffNote: '' },
+    end: { label: 'End conversation' },
   };
-  return { id: makeId(), type, position: { x: 100 + (index % 3) * 260, y: 56 + Math.floor(index / 3) * 210 }, data: defaults[type] };
+  return {
+    id: makeId(),
+    type,
+    position: position ?? { x: 100 + (index % 3) * 260, y: 56 + Math.floor(index / 3) * 210 },
+    data: defaults[type],
+  };
 }
 
 function FlowBuilderPage() {
@@ -342,17 +357,14 @@ function FlowBuilderPage() {
   const flowId = params.flowId ?? '';
   const { data: flow, isLoading, isError, refetch } = useGetFlow(flowId, { query: { enabled: !!flowId, queryKey: getGetFlowQueryKey(flowId) } });
   const update = useUpdateFlow();
+  const validate = useValidateFlow();
   const client = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [graph, setGraph] = useState<FlowGraph>({ nodes: [], edges: [] });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [connectFrom, setConnectFrom] = useState('');
-  const [connectTo, setConnectTo] = useState('');
-  const [connectLabel, setConnectLabel] = useState('');
+  const [validation, setValidation] = useState<{ valid: boolean; issues: string[] } | null>(null);
   const [initialized, setInitialized] = useState('');
-  const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
-  const movedDuringDrag = useRef(false);
 
   useEffect(() => {
     if (flow && initialized !== flow.id) {
@@ -365,81 +377,92 @@ function FlowBuilderPage() {
   }, [flow, initialized]);
 
   const selected = graph.nodes.find(node => node.id === selectedId) ?? null;
-  const persist = (status?: 'draft' | 'published') => {
-    if (!flow) return;
+  const hasUnsavedChanges = !!flow && (
+    name !== flow.name
+    || description !== (flow.description ?? '')
+    || JSON.stringify(graph) !== JSON.stringify(flow.graph)
+  );
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warnBeforeLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeLeave);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeave);
+  }, [hasUnsavedChanges]);
+
+  const persist = async (status?: Flow['status']): Promise<Flow> => {
+    if (!flow) throw new Error('The flow is still loading.');
     const payload = { flowId: flow.id, data: { name: name.trim() || flow.name, description: description.trim() || null, graph, ...(status ? { status } : {}) } };
-    update.mutate(payload, { onSuccess: saved => {
-      client.setQueryData(getGetFlowQueryKey(flow.id), saved);
-      void client.invalidateQueries({ queryKey: getListFlowsQueryKey() });
-      void client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-    } });
+    const saved = await update.mutateAsync(payload);
+    client.setQueryData(getGetFlowQueryKey(flow.id), saved);
+    void client.invalidateQueries({ queryKey: getListFlowsQueryKey() });
+    void client.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    setName(saved.name);
+    setDescription(saved.description ?? '');
+    setGraph(saved.graph);
+    setValidation(null);
+    return saved;
   };
-  const addNode = (type: FlowNode['type']) => {
-    const node = defaultNode(type, graph.nodes.length);
+  const saveDraft = () => persist();
+  const publish = async () => {
+    if (!flow || update.isPending || validate.isPending) return;
+    if (flow.status === 'published') {
+      await persist('draft');
+      return;
+    }
+    try {
+      const result = await validate.mutateAsync({ flowId: flow.id, data: graph });
+      setValidation(result);
+      if (result.valid) await persist('published');
+    } catch {
+      // The mutation error and any actionable validation issues are shown below.
+    }
+  };
+  const addNode = (type: FlowNode['type'], position?: FlowNode['position']) => {
+    const node = defaultNode(type, graph.nodes.length, position);
     setGraph(current => ({ ...current, nodes: [...current.nodes, node] }));
     setSelectedId(node.id);
+    setValidation(null);
   };
-  const patchSelected = (patch: Partial<FlowNode['data']>) => {
+  const patchSelected = (patch: Partial<FlowNodeData>) => {
     if (!selected) return;
     setGraph(current => ({ ...current, nodes: current.nodes.map(node => node.id === selected.id ? { ...node, data: { ...node.data, ...patch } } : node) }));
+    setValidation(null);
   };
   const deleteSelected = () => {
     if (!selected) return;
-    setGraph(current => ({ nodes: current.nodes.filter(node => node.id !== selected.id), edges: current.edges.filter(edge => edge.source !== selected.id && edge.target !== selected.id) }));
-    setSelectedId(null);
-  };
-  const connectNodes = (event: FormEvent) => {
-    event.preventDefault();
-    if (!connectFrom || !connectTo || connectFrom === connectTo) return;
-    const edge: FlowEdge = { id: makeId(), source: connectFrom, target: connectTo, label: connectLabel.trim() || null };
-    setGraph(current => ({ ...current, edges: [...current.edges.filter(item => !(item.source === edge.source && item.target === edge.target)), edge] }));
-    setConnectLabel('');
-  };
-  const updateButton = (index: number, label: string) => {
-    const buttons: FlowButton[] = [...(selected?.data.buttons ?? [])];
-    buttons[index] = { ...buttons[index], label };
-    patchSelected({ buttons });
-  };
-  const addButton = () => patchSelected({ buttons: [...(selected?.data.buttons ?? []), { label: `Option ${(selected?.data.buttons?.length ?? 0) + 1}`, targetId: null }] });
-  const removeButton = (index: number) => patchSelected({ buttons: (selected?.data.buttons ?? []).filter((_, i) => i !== index) });
-  const startNodeDrag = (event: ReactPointerEvent<HTMLButtonElement>, node: FlowNode) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setSelectedId(node.id);
-    movedDuringDrag.current = false;
-    dragRef.current = {
-      id: node.id,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: node.position.x,
-      originY: node.position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const moveNodeDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const deltaX = event.clientX - drag.startX;
-    const deltaY = event.clientY - drag.startY;
-    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) movedDuringDrag.current = true;
-    if (!movedDuringDrag.current) return;
     setGraph(current => ({
-      ...current,
-      nodes: current.nodes.map(node => node.id === drag.id ? {
-        ...node,
-        position: {
-          x: Math.max(0, drag.originX + deltaX),
-          y: Math.max(0, drag.originY + deltaY),
-        },
-      } : node),
+      nodes: current.nodes
+        .filter(node => node.id !== selected.id)
+        .map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            buttons: node.data.buttons?.map(button => button.targetId === selected.id ? { ...button, targetId: null } : button),
+          },
+        })),
+      edges: current.edges.filter(edge => edge.source !== selected.id && edge.target !== selected.id),
     }));
+    setSelectedId(null);
+    setValidation(null);
   };
-  const finishNodeDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (dragRef.current?.pointerId !== event.pointerId) return;
-    dragRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  const duplicateSelected = () => {
+    if (!selected) return;
+    const copy: FlowNode = {
+      ...selected,
+      id: makeId(),
+      position: { x: selected.position.x + 48, y: selected.position.y + 48 },
+      data: {
+        ...selected.data,
+        buttons: selected.data.buttons?.map(button => ({ ...button, id: makeId(), targetId: null })),
+      },
+    };
+    setGraph(current => ({ ...current, nodes: [...current.nodes, copy] }));
+    setSelectedId(copy.id);
+    setValidation(null);
   };
 
   if (isLoading) return <AppShell title="Flow builder" eyebrow="Workspace / Flows"><div className="animate-pulse rounded-xl border border-[#e3e4d9] bg-[#fffefa] p-8"><div className="h-6 w-52 rounded bg-[#e8ebe2]" /><div className="mt-7 h-[420px] rounded-xl bg-[#eef0e8]" /></div></AppShell>;
@@ -448,66 +471,81 @@ function FlowBuilderPage() {
   return <AppShell title={name || 'Flow builder'} eyebrow="Workspace / Flows">
     <div className="fade-up">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3"><Link href="/flows" className="rounded-lg border border-[#e1e2d8] bg-[#fffefa] p-2 text-[#66776e] hover:text-[#1f6653]"><ArrowDown size={15} className="rotate-90" /></Link><div className="min-w-0"><input value={name} onChange={event => setName(event.target.value)} maxLength={120} data-testid="input-builder-flow-name" className="max-w-[420px] truncate border-0 bg-transparent p-0 font-display text-[22px] font-semibold tracking-[-.04em] outline-none focus:ring-0 md:text-[26px]" /><div className="mt-1 flex items-center gap-2 text-[10px] text-[#819087]"><StatusPill status={flow.status} /> <span>Last updated {formatDate(flow.updatedAt)}</span></div></div></div>
-        <div className="flex items-center gap-2"><span className="hidden text-[10px] text-[#819087] sm:inline">{update.isSuccess ? 'All changes saved' : update.isPending ? 'Saving changes…' : ''}</span><button type="button" data-testid="button-save-flow" disabled={update.isPending} onClick={() => persist()} className="inline-flex items-center gap-2 rounded-lg border border-[#d9e0d6] bg-[#fffefa] px-3.5 py-2.5 text-[11px] font-bold text-[#35584b] hover:bg-[#f1f4ed] disabled:opacity-60"><Save size={14} /> Save</button><button type="button" data-testid="button-publish-flow" disabled={update.isPending} onClick={() => persist(flow.status === 'published' ? 'draft' : 'published')} className="inline-flex items-center gap-2 rounded-lg bg-[#1f6653] px-3.5 py-2.5 text-[11px] font-bold text-white hover:bg-[#174e40] disabled:opacity-60"><Zap size={14} /> {flow.status === 'published' ? 'Unpublish' : 'Publish'}</button></div>
-      </div>
-      {update.isError && <div className="mb-4"><ErrorState message="Your changes could not be saved. Check your connection and try again." retry={() => persist()} /></div>}
-      <div className="grid overflow-hidden rounded-xl border border-[#dcdfd5] bg-[#fffefa] xl:grid-cols-[1fr_310px]">
-        <section className="min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e9eae1] px-4 py-3">
-            <div><div className="font-display text-[13px] font-semibold">Conversation map</div><div className="mt-0.5 text-[10px] text-[#89948d]">{graph.nodes.length} {graph.nodes.length === 1 ? 'step' : 'steps'} · {graph.edges.length} connections</div></div>
-            <div className="flex flex-wrap gap-1.5">
-              <button type="button" data-testid="button-add-trigger" onClick={() => addNode(FlowNodeType.trigger)} className="inline-flex items-center gap-1.5 rounded-md border border-[#dce6dd] bg-[#f6faf5] px-2.5 py-1.5 text-[10px] font-bold text-[#32745d] hover:bg-[#eaf3e9]"><Plus size={12} /> Trigger</button>
-              <button type="button" data-testid="button-add-message" onClick={() => addNode(FlowNodeType.message)} className="inline-flex items-center gap-1.5 rounded-md border border-[#ecdccd] bg-[#fff8f1] px-2.5 py-1.5 text-[10px] font-bold text-[#b66a48] hover:bg-[#f9eee3]"><Plus size={12} /> Message</button>
-              <button type="button" data-testid="button-add-condition" onClick={() => addNode(FlowNodeType.condition)} className="inline-flex items-center gap-1.5 rounded-md border border-[#e5e3ce] bg-[#faf9ed] px-2.5 py-1.5 text-[10px] font-bold text-[#827844] hover:bg-[#f3f0d9]"><Plus size={12} /> Condition</button>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/flows"
+            onClick={event => { if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Leave this flow?')) event.preventDefault(); }}
+            className="rounded-lg border border-[#e1e2d8] bg-[#fffefa] p-2 text-[#66776e] hover:text-[#1f6653]"
+          >
+            <ArrowDown size={15} className="rotate-90" />
+          </Link>
+          <div className="min-w-0">
+            <input
+              value={name}
+              onChange={event => setName(event.target.value)}
+              maxLength={120}
+              data-testid="input-builder-flow-name"
+              aria-label="Flow name"
+              className="max-w-[420px] truncate border-0 bg-transparent p-0 font-display text-[22px] font-semibold tracking-[-.04em] outline-none focus:ring-0 md:text-[26px]"
+            />
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-[#819087]">
+              <StatusPill status={flow.status} />
+              <span>Last updated {formatDate(flow.updatedAt)}</span>
+              <span aria-live="polite" data-testid="status-flow-save">
+                {update.isPending ? 'Saving…' : hasUnsavedChanges ? 'Unsaved changes' : 'All changes saved'}
+              </span>
             </div>
           </div>
-          <div className="canvas-grid relative min-h-[480px] overflow-auto p-5 md:min-h-[620px]">
-            {graph.nodes.length === 0 ? <div className="mx-auto mt-16 max-w-sm rounded-xl border border-dashed border-[#bcc9ba] bg-[#fffefa]/90 p-7 text-center"><span className="mx-auto grid size-10 place-items-center rounded-xl bg-[#eaf2e9] text-[#32745d]"><Workflow size={19} /></span><h3 className="font-display mt-4 text-[16px] font-semibold">Give the conversation a starting point.</h3><p className="mt-2 text-[11px] leading-5 text-[#7b8981]">Add a trigger, then place messages or conditions wherever they make sense.</p><button type="button" onClick={() => addNode(FlowNodeType.trigger)} className="mt-4 rounded-lg bg-[#1f6653] px-4 py-2 text-[11px] font-bold text-white">Add a trigger</button></div> : <div className="relative min-h-[440px] min-w-[720px]">
-              <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-label="Flow connections">
-                {graph.edges.map(edge => {
-                  const a = graph.nodes.find(n => n.id === edge.source); const b = graph.nodes.find(n => n.id === edge.target);
-                  if (!a || !b) return null;
-                  const x1 = a.position.x + 196; const y1 = a.position.y + 90; const x2 = b.position.x; const y2 = b.position.y + 90;
-                  const mid = (x1 + x2) / 2;
-                  return <g key={edge.id}><path d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`} fill="none" stroke="#84a394" strokeWidth="2" strokeDasharray="5 4" /><circle cx={x2} cy={y2} r="4" fill="#5d8b75" />{edge.label && <text x={mid} y={(y1 + y2) / 2 - 8} textAnchor="middle" fill="#71847a" fontSize="10">{edge.label}</text>}</g>;
-                })}
-              </svg>
-              {graph.nodes.map((node, index) => <button key={node.id} type="button" onClick={() => setSelectedId(node.id)} onPointerDown={event => startNodeDrag(event, node)} onPointerMove={moveNodeDrag} onPointerUp={finishNodeDrag} onPointerCancel={finishNodeDrag} data-testid={`node-${node.id}`} aria-label={`${nodeTypeLabels[node.type]} step: ${node.data.label}. Drag to reposition.`} className={`node-card absolute w-[204px] touch-none select-none cursor-grab rounded-xl border bg-[#fffefa] p-3 text-left active:cursor-grabbing ${selectedId === node.id ? 'ring-2 ring-[#2f8068]/35' : ''}`} style={{ left: node.position.x, top: node.position.y, borderColor: selectedId === node.id ? '#66a188' : '#dfe3d8' }}>
-                <div className="flex items-center justify-between"><span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[.1em]" style={{ color: nodeTypeColors[node.type] }}>{node.type === 'trigger' ? <Zap size={12} /> : node.type === 'message' ? <MessageSquareText size={12} /> : <GitBranch size={12} />}{nodeTypeLabels[node.type]}</span><MoreHorizontal size={14} className="text-[#a4aea5]" /></div>
-                <div className="mt-2 text-[11px] font-semibold text-[#293e36]">{node.data.label}</div>
-                <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-[#76847b]">{node.type === 'condition' ? node.data.condition || 'Set a condition' : node.data.text || (node.type === 'trigger' ? 'Starts this conversation' : 'Add your message')}</div>
-                {node.data.buttons?.map(button => <div key={button.label} className="mt-1 rounded border border-[#e4e7de] px-1.5 py-1 text-[9px] text-[#7b8980]">{button.label}</div>)}
-                <span className="absolute -right-[5px] top-[84px] size-2.5 rounded-full border-2 border-[#fffefa] bg-[#6f9b82]" />
-                {index !== 0 && <span className="absolute -left-[5px] top-[84px] size-2.5 rounded-full border-2 border-[#fffefa] bg-[#6f9b82]" />}
-              </button>)}
-            </div>}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e9eae1] bg-[#fbfaf5] px-4 py-2.5 text-[10px] text-[#849188]"><span className="flex items-center gap-1.5"><Command size={12} /> Select a step to edit · connect steps in the right panel</span><span className="flex items-center gap-1"><Check size={12} className="text-[#438466]" /> Changes are saved when you choose Save</span></div>
-        </section>
-        <aside className="border-t border-[#e8e9df] bg-[#fffefa] xl:border-l xl:border-t-0">
-          {selected ? <div className="p-5">
-            <div className="flex items-center justify-between"><div><div className="text-[9px] font-bold uppercase tracking-[.13em]" style={{ color: nodeTypeColors[selected.type] }}>{nodeTypeLabels[selected.type]} step</div><h3 className="font-display mt-1 text-[16px] font-semibold">Step details</h3></div><button type="button" data-testid="button-remove-node" aria-label="Delete selected step" onClick={deleteSelected} className="rounded-md p-2 text-[#9b837c] hover:bg-[#fff0eb] hover:text-[#b84c41]"><Trash2 size={15} /></button></div>
-            <label className="mt-5 block text-[10px] font-bold text-[#586a60]">Step name<input value={selected.data.label} onChange={event => patchSelected({ label: event.target.value })} maxLength={120} data-testid="input-node-label" className="mt-1.5 w-full rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2.5 py-2 text-[11px] font-normal outline-none focus:border-[#4b8a72]" /></label>
-            {selected.type === 'message' && <>
-              <label className="mt-4 block text-[10px] font-bold text-[#586a60]">Message text<textarea value={selected.data.text ?? ''} onChange={event => patchSelected({ text: event.target.value })} maxLength={2000} rows={5} data-testid="input-node-message" placeholder="Write the message your customer will see." className="mt-1.5 w-full resize-y rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2.5 py-2 text-[11px] font-normal leading-5 outline-none focus:border-[#4b8a72]" /></label>
-              <div className="mt-4"><div className="flex items-center justify-between"><span className="text-[10px] font-bold text-[#586a60]">Reply buttons</span><span className="text-[9px] text-[#99a39a]">{selected.data.buttons?.length ?? 0}/5</span></div>{(selected.data.buttons ?? []).map((button, index) => <div key={`${selected.id}-button-${index}`} className="mt-2 flex gap-1"><input value={button.label} maxLength={80} onChange={event => updateButton(index, event.target.value)} data-testid={`input-node-button-${index}`} className="min-w-0 flex-1 rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2.5 py-2 text-[10px] outline-none focus:border-[#4b8a72]" /><button type="button" aria-label={`Remove reply button ${index + 1}`} onClick={() => removeButton(index)} className="rounded-md p-2 text-[#99a39a] hover:bg-[#fff0eb] hover:text-[#b84c41]"><X size={13} /></button></div>)}{(selected.data.buttons?.length ?? 0) < 5 && <button type="button" data-testid="button-add-reply" onClick={addButton} className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-[#32745d] hover:underline"><Plus size={12} /> Add reply button</button>}</div>
-            </>}
-            {selected.type === 'condition' && <label className="mt-4 block text-[10px] font-bold text-[#586a60]">Condition to check<textarea value={selected.data.condition ?? ''} onChange={event => patchSelected({ condition: event.target.value })} maxLength={500} rows={4} placeholder="Describe the condition this step checks." className="mt-1.5 w-full resize-y rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2.5 py-2 text-[11px] font-normal leading-5 outline-none focus:border-[#4b8a72]" /></label>}
-            {selected.type === 'trigger' && <div className="mt-4 rounded-lg border border-[#e3e9df] bg-[#f5f8f1] p-3 text-[10px] leading-5 text-[#718078]">This flow begins when a conversation starts. More trigger options can be added as your setup grows.</div>}
-            <div className="my-5 border-t border-[#ecece3]" />
-            <form onSubmit={connectNodes}>
-              <div className="flex items-center gap-2"><GitBranch size={14} className="text-[#678877]" /><h4 className="text-[11px] font-bold">Connect a step</h4></div>
-              <p className="mt-1 text-[10px] leading-4 text-[#88948c]">Choose where this step leads.</p>
-              <label className="mt-3 block text-[9px] font-bold text-[#64736a]">From<select value={connectFrom || selected.id} onChange={event => setConnectFrom(event.target.value)} className="mt-1 w-full rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2 py-2 text-[10px] font-normal"><option value={selected.id}>{selected.data.label}</option>{graph.nodes.filter(node => node.id !== selected.id).map(node => <option key={node.id} value={node.id}>{node.data.label}</option>)}</select></label>
-              <label className="mt-2 block text-[9px] font-bold text-[#64736a]">To<select value={connectTo} onChange={event => setConnectTo(event.target.value)} required className="mt-1 w-full rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2 py-2 text-[10px] font-normal"><option value="">Choose a step…</option>{graph.nodes.filter(node => node.id !== (connectFrom || selected.id)).map(node => <option key={node.id} value={node.id}>{node.data.label}</option>)}</select></label>
-              <input value={connectLabel} onChange={event => setConnectLabel(event.target.value)} maxLength={120} placeholder="Optional connection label" className="mt-2 w-full rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2 py-2 text-[10px] outline-none focus:border-[#4b8a72]" />
-              <button type="submit" disabled={!connectTo || graph.nodes.length < 2} data-testid="button-connect-nodes" className="mt-2 w-full rounded-md border border-[#dce5dc] bg-[#eff5ed] px-3 py-2 text-[10px] font-bold text-[#39715d] disabled:opacity-50">Add connection</button>
-            </form>
-            {graph.edges.length > 0 && <div className="mt-4 space-y-1.5">{graph.edges.map(edge => <div key={edge.id} className="flex items-center gap-2 rounded-md bg-[#f6f6f0] px-2.5 py-2 text-[9px] text-[#77857c]"><span className="truncate">{graph.nodes.find(n => n.id === edge.source)?.data.label}</span><ArrowRight size={11} className="shrink-0" /><span className="truncate flex-1">{graph.nodes.find(n => n.id === edge.target)?.data.label}</span>{edge.label && <span className="max-w-16 truncate rounded bg-[#e9eee7] px-1.5 py-0.5">{edge.label}</span>}<button type="button" aria-label="Remove connection" onClick={() => setGraph(current => ({ ...current, edges: current.edges.filter(item => item.id !== edge.id) }))} className="text-[#99a39a] hover:text-[#b84c41]"><X size={12} /></button></div>)}</div>}
-          </div> : <div className="p-6"><div className="grid size-9 place-items-center rounded-lg bg-[#edf2e9] text-[#32745d]"><Settings2 size={17} /></div><h3 className="font-display mt-4 text-[15px] font-semibold">Edit your flow</h3><p className="mt-2 text-[11px] leading-5 text-[#7f8c84]">Select a step to update its content, or add a new step from the toolbar.</p><label className="mt-5 block text-[10px] font-bold text-[#586a60]">Flow description<textarea value={description} onChange={event => setDescription(event.target.value)} rows={3} maxLength={1000} placeholder="What does this flow help with?" className="mt-1.5 w-full resize-none rounded-md border border-[#dfe2d7] bg-[#fbfaf5] px-2.5 py-2 text-[11px] font-normal outline-none focus:border-[#4b8a72]" /></label></div>}
-        </aside>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="button-save-flow"
+            disabled={update.isPending || !hasUnsavedChanges}
+            onClick={() => { void persist().catch(() => undefined); }}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#d9e0d6] bg-[#fffefa] px-3.5 py-2.5 text-[11px] font-bold text-[#35584b] hover:bg-[#f1f4ed] disabled:opacity-60"
+          >
+            <Save size={14} /> Save
+          </button>
+          <button
+            type="button"
+            data-testid="button-publish-flow"
+            disabled={update.isPending || validate.isPending}
+            onClick={() => { void publish(); }}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#1f6653] px-3.5 py-2.5 text-[11px] font-bold text-white hover:bg-[#174e40] disabled:opacity-60"
+          >
+            <Zap size={14} /> {flow.status === 'published' ? 'Unpublish' : 'Publish'}
+          </button>
+        </div>
       </div>
+      {update.isError && <div className="mb-4"><ErrorState message="Your changes could not be saved. Check your connection and try again." retry={() => { void persist().catch(() => undefined); }} /></div>}
+      {validate.isError && <div className="mb-4"><ErrorState message="The flow could not be validated. Try again." retry={() => { void validate.mutateAsync({ flowId: flow.id, data: graph }).then(setValidation).catch(() => undefined); }} /></div>}
+      {validation && (
+        <div role={validation.valid ? 'status' : 'alert'} className={`mb-4 rounded-lg border p-4 ${validation.valid ? 'border-[#d5e7d9] bg-[#f1f8f1]' : 'border-[#efd2c9] bg-[#fff7f3]'}`}>
+          <div className={`text-[11px] font-bold ${validation.valid ? 'text-[#34755e]' : 'text-[#80463a]'}`}>
+            {validation.valid ? 'This flow is ready to publish.' : 'Fix these issues before publishing.'}
+          </div>
+          {validation.issues.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-4 text-[10px] leading-4 text-[#7c7469]">{validation.issues.map((issue, index) => <li key={`${issue}-${index}`}>{issue}</li>)}</ul>}
+        </div>
+      )}
+      <div className="grid overflow-hidden rounded-xl border border-[#dcdfd5] bg-[#fffefa] xl:grid-cols-[minmax(0,1fr)_320px]">
+        <FlowBuilderCanvas
+          graph={graph}
+          selectedId={selectedId}
+          onGraphChange={nextGraph => { setGraph(nextGraph); setValidation(null); }}
+          onSelectedIdChange={setSelectedId}
+          onAddNode={addNode}
+        />
+        <FlowNodeInspector
+          selected={selected}
+          description={description}
+          onDescriptionChange={setDescription}
+          onPatchData={patchSelected}
+          onDelete={deleteSelected}
+          onDuplicate={duplicateSelected}
+        />
+      </div>
+      <FlowSimulator flow={flow} onSaveDraft={saveDraft} />
     </div>
   </AppShell>;
 }

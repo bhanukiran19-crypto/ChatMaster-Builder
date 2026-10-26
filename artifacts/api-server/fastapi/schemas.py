@@ -339,6 +339,7 @@ class FlowExecutionOut(BaseModel):
     mode: Literal["simulation"]
     status: SimulationStatus
     flowVersion: int = Field(validation_alias="flow_version")
+    stepsExecuted: int = Field(validation_alias="steps_executed")
     currentNodeId: str | None = Field(validation_alias="current_node_id")
     context: dict
     messages: list[FlowMessageOut]

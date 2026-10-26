@@ -366,6 +366,11 @@ export interface FlowExecution {
   status: FlowExecutionStatus;
   /** @minimum 1 */
   flowVersion: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  stepsExecuted: number;
   /** @nullable */
   currentNodeId: string | null;
   context: FlowExecutionContext;

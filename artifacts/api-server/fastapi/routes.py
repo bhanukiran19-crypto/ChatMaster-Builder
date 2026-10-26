@@ -259,6 +259,7 @@ def start_flow_simulation(
         mode="simulation",
         status=state["status"],
         flow_version=flow.draft_version,
+        steps_executed=state["steps_executed"],
         graph_snapshot=graph.model_dump(mode="json"),
         current_node_id=state["current_node_id"],
         context=state["context"],
@@ -328,6 +329,7 @@ def send_simulation_input(
                 "messages": execution.messages,
                 "trace": execution.trace,
                 "error": execution.error,
+                "steps_executed": execution.steps_executed,
             },
             message=payload.message,
             button_id=payload.buttonId,
@@ -341,6 +343,7 @@ def send_simulation_input(
     execution.messages = state["messages"]
     execution.trace = state["trace"]
     execution.error = state["error"]
+    execution.steps_executed = state["steps_executed"]
     audit(
         session,
         actor,

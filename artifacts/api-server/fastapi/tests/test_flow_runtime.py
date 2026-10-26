@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 import database
 from models import Flow
+from workflow_engine import MAX_EXECUTION_STEPS, start_simulation
 
 OWNER = {
     "x-chatmaster-user-id": "runtime_owner",
@@ -87,6 +88,7 @@ def test_simulation_runs_buttons_and_contact_actions_without_sending_messages(ap
     assert simulation["mode"] == "simulation"
     assert simulation["status"] == "awaiting_input"
     assert simulation["messages"][0]["text"] == "What can we help with?"
+    assert simulation["stepsExecuted"] == 2
 
     continued = api_client.post(
         f"/simulations/{simulation['id']}/input",
@@ -98,6 +100,7 @@ def test_simulation_runs_buttons_and_contact_actions_without_sending_messages(ap
     assert state["status"] == "awaiting_input"
     assert state["context"]["tags"] == ["order-question"]
     assert state["messages"][-1]["text"] == "We can help with your order."
+    assert state["stepsExecuted"] == 4
 
     completed = api_client.post(
         f"/simulations/{simulation['id']}/input",
@@ -106,6 +109,7 @@ def test_simulation_runs_buttons_and_contact_actions_without_sending_messages(ap
     )
     assert completed.status_code == 200
     assert completed.json()["status"] == "completed"
+    assert completed.json()["stepsExecuted"] == 5
 
 
 def test_simulations_are_workspace_scoped(api_client):
@@ -234,3 +238,37 @@ def test_ai_step_fails_explicitly_without_a_configured_provider(api_client):
     assert simulation.json()["status"] == "failed"
     assert "AI provider is configured" in simulation.json()["error"]
     assert simulation.json()["messages"] == []
+
+
+def test_simulation_step_limit_is_cumulative_and_stops_loops():
+    nodes = [
+        {
+            "id": "start",
+            "type": "trigger",
+            "data": {"triggerType": "conversation_start", "label": "Start"},
+        },
+        {
+            "id": "mark",
+            "type": "add_tag",
+            "data": {"tagName": "loop", "label": "Loop"},
+        },
+    ]
+    graph = {
+        "nodes": nodes,
+        "edges": [
+            {"id": "start-mark", "source": "start", "target": "mark"},
+            {"id": "mark-start", "source": "mark", "target": "start"},
+        ],
+    }
+
+    state = start_simulation(
+        graph,
+        trigger_type="conversation_start",
+        message=None,
+        context={"tags": []},
+    )
+
+    assert state["status"] == "failed"
+    assert state["steps_executed"] == MAX_EXECUTION_STEPS
+    assert state["context"]["tags"] == ["loop"]
+    assert "100-step safety limit" in state["error"]

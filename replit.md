@@ -42,7 +42,7 @@ ChatMaster helps teams create and manage chatbot conversation flows. The current
 
 ## Product
 
-The MVP supports Clerk sign-up/sign-in, one automatically provisioned workspace per account, role-aware flow editing, flow persistence and publication state, live dashboard counts, and audit events for flow changes. Contacts, inbox, AI knowledge answers, website widget, simulator, webhooks, and messaging channels are not connected yet.
+The MVP supports Clerk sign-up/sign-in, one automatically provisioned workspace per account, role-aware flow editing, flow persistence and publication state, live dashboard counts, and audit events for flow changes. The flow editor uses React Flow and includes all current node types, backend validation, draft simulation, and saved execution traces. Simulations are isolated and have a cumulative 100-step limit. Contacts, inbox, AI knowledge answers, website widget, webhooks, and messaging channels are not connected yet. Published flows are not triggered by live customer events.
 
 ## User preferences
 
