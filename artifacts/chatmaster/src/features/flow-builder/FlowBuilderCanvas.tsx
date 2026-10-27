@@ -520,7 +520,7 @@ function FlowBuilderCanvasContent({
               </div>
             )}
 
-            <ReactFlow<CanvasNode, CanvasEdge>
+            <ReactFlow
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
