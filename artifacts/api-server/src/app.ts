@@ -36,6 +36,26 @@ app.use(
 // Clerk's frontend proxy must see the unparsed request body.
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
+const fastApiTarget = `http://127.0.0.1:${process.env.CHATMASTER_API_PORT ?? "18081"}`;
+
+// Signed inbound webhook requests use their endpoint secret instead of a
+// Clerk session. Keep this narrowly scoped proxy before Clerk enforcement.
+app.use(
+  "/api/webhooks/incoming",
+  createProxyMiddleware({
+    target: fastApiTarget,
+    changeOrigin: true,
+    pathRewrite: (path) => `/webhooks/incoming${path}`,
+    on: {
+      error(_error, _req, res) {
+        if ("writeHead" in res && !res.headersSent) {
+          res.writeHead(502, { "content-type": "application/json" });
+          res.end(JSON.stringify({ error: "ChatMaster API is unavailable." }));
+        }
+      },
+    },
+  }),
+);
 app.use(
   "/api",
   clerkMiddleware((req) => ({
@@ -69,7 +89,7 @@ app.use("/api", (req, res, next) => {
 app.use(
   "/api",
   createProxyMiddleware({
-    target: `http://127.0.0.1:${process.env.CHATMASTER_API_PORT ?? "18081"}`,
+    target: fastApiTarget,
     changeOrigin: true,
     on: {
       error(_error, _req, res) {

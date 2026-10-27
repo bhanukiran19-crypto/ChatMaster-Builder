@@ -26,6 +26,7 @@ from workflow_engine import (
     continue_simulation,
     start_simulation,
 )
+from webhook_service import enqueue_event
 
 router = APIRouter()
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -209,6 +210,16 @@ def update_flow(
         flow.published_graph = graph.model_dump(mode="json")
         flow.published_version += 1
         flow.status = "published"
+        enqueue_event(
+            session,
+            actor.workspace.id,
+            "flow.published",
+            {
+                "flowId": str(flow.id),
+                "name": flow.name,
+                "version": flow.published_version,
+            },
+        )
     elif requested_status == "draft":
         flow.status = "draft"
     elif graph_changed and flow.status == "published":

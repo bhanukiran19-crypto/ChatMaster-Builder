@@ -1,6 +1,6 @@
 from datetime import datetime
 import json
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -363,3 +363,136 @@ class DashboardSummary(BaseModel):
 
 class DeleteFlowResult(BaseModel):
     deleted: bool
+
+
+WebhookDirection = Literal["outgoing", "incoming"]
+WebhookEventName = Literal["flow.published", "webhook.incoming.received"]
+WebhookDeliveryStatus = Literal["pending", "delivering", "delivered", "failed", "cancelled"]
+
+
+class WebhookEventTypeOut(BaseModel):
+    eventType: WebhookEventName
+    description: str
+
+
+class WebhookEndpointInput(StrictModel):
+    name: str = Field(min_length=1, max_length=120)
+    direction: WebhookDirection
+    url: str | None = Field(default=None, max_length=2048)
+    eventTypes: list[WebhookEventName] = Field(default_factory=list, max_length=10)
+
+    @field_validator("name")
+    @classmethod
+    def name_is_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Endpoint name cannot be blank.")
+        return value.strip()
+
+    @model_validator(mode="after")
+    def direction_has_matching_settings(self) -> "WebhookEndpointInput":
+        if self.direction == "outgoing" and not self.url:
+            raise ValueError("Outgoing endpoints require an HTTPS URL.")
+        if self.direction == "incoming" and (self.url is not None or self.eventTypes):
+            raise ValueError("Incoming endpoints cannot have a destination URL or outgoing subscriptions.")
+        if len(set(self.eventTypes)) != len(self.eventTypes):
+            raise ValueError("Event types must not contain duplicates.")
+        return self
+
+
+class WebhookEndpointUpdate(StrictModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    url: str | None = Field(default=None, max_length=2048)
+    eventTypes: list[WebhookEventName] | None = Field(default=None, max_length=10)
+    isEnabled: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def update_name_is_not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if not value.strip():
+            raise ValueError("Endpoint name cannot be blank.")
+        return value.strip()
+
+    @field_validator("eventTypes")
+    @classmethod
+    def update_event_types_are_unique(
+        cls, value: list[WebhookEventName] | None
+    ) -> list[WebhookEventName] | None:
+        if value is not None and len(set(value)) != len(value):
+            raise ValueError("Event types must not contain duplicates.")
+        return value
+
+    @model_validator(mode="after")
+    def has_updates(self) -> "WebhookEndpointUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Provide at least one endpoint setting to update.")
+        return self
+
+
+class WebhookEndpointOut(BaseModel):
+    id: UUID
+    name: str
+    direction: WebhookDirection
+    url: str | None
+    eventTypes: list[WebhookEventName]
+    isEnabled: bool
+    secretReference: UUID | None
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class WebhookEndpointCreated(BaseModel):
+    endpoint: WebhookEndpointOut
+    signingSecret: str
+    inboundPath: str | None
+
+
+class WebhookSecretRotation(BaseModel):
+    signingSecret: str
+    secretReference: UUID
+
+
+class WebhookDeliveryAttemptOut(BaseModel):
+    id: UUID
+    attemptNumber: int
+    status: Literal["in_progress", "succeeded", "failed"]
+    requestStartedAt: datetime
+    finishedAt: datetime | None
+    responseStatus: int | None
+    errorMessage: str | None
+
+
+class WebhookDeliveryOut(BaseModel):
+    id: UUID
+    endpointId: UUID
+    eventId: UUID
+    eventType: str
+    status: WebhookDeliveryStatus
+    attemptCount: int
+    retryCount: int
+    nextAttemptAt: datetime | None
+    httpStatus: int | None
+    lastError: str | None
+    createdAt: datetime
+    updatedAt: datetime
+    attempts: list[WebhookDeliveryAttemptOut]
+
+
+class IncomingWebhookEnvelope(StrictModel):
+    id: str = Field(min_length=1, max_length=200)
+    type: str = Field(min_length=1, max_length=120)
+    data: dict[str, Any]
+
+    @field_validator("id", "type")
+    @classmethod
+    def event_strings_are_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Event identifiers and types cannot be blank.")
+        return value.strip()
+
+
+class IncomingWebhookResult(BaseModel):
+    accepted: bool
+    duplicate: bool
+    eventId: UUID

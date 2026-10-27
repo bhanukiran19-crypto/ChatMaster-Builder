@@ -279,6 +279,295 @@ paths:
           description: Simulation not found
         "409":
           description: Simulation is not waiting for input
+  /webhooks/events:
+    get:
+      operationId: listWebhookEventTypes
+      tags: [webhooks]
+      summary: List event types currently emitted by ChatMaster
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Supported event types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WebhookEventType"
+        "401":
+          description: Authentication required
+  /webhooks/endpoints:
+    get:
+      operationId: listWebhookEndpoints
+      tags: [webhooks]
+      summary: List workspace webhook endpoints
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Webhook endpoints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WebhookEndpoint"
+        "401":
+          description: Authentication required
+    post:
+      operationId: createWebhookEndpoint
+      tags: [webhooks]
+      summary: Create an incoming or outgoing webhook endpoint
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointInput"
+      responses:
+        "201":
+          description: Endpoint created; the signing secret is shown only once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointCreated"
+        "400":
+          description: Invalid endpoint configuration
+        "403":
+          description: Workspace administrator access required
+        "401":
+          description: Authentication required
+  /webhooks/endpoints/{endpointId}:
+    parameters:
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateWebhookEndpoint
+      tags: [webhooks]
+      summary: Update endpoint settings and event subscriptions
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookEndpointUpdate"
+      responses:
+        "200":
+          description: Updated endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpoint"
+        "400":
+          description: Invalid endpoint configuration
+        "401":
+          description: Authentication required
+        "403":
+          description: Workspace administrator access required
+        "404":
+          description: Endpoint not found
+    delete:
+      operationId: deleteWebhookEndpoint
+      tags: [webhooks]
+      summary: Delete an endpoint and its delivery history
+      security:
+        - clerkSession: []
+      responses:
+        "204":
+          description: Endpoint and its delivery history deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: Workspace administrator access required
+        "404":
+          description: Endpoint not found
+  /webhooks/endpoints/{endpointId}/rotate-secret:
+    parameters:
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: rotateWebhookSecret
+      tags: [webhooks]
+      summary: Replace an endpoint signing secret
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: New secret shown only in this response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookSecretRotation"
+        "401":
+          description: Authentication required
+        "403":
+          description: Workspace administrator access required
+        "404":
+          description: Endpoint not found
+  /webhooks/endpoints/{endpointId}/test:
+    parameters:
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: testWebhookEndpoint
+      tags: [webhooks]
+      summary: Queue a signed test delivery
+      security:
+        - clerkSession: []
+      responses:
+        "202":
+          description: Test delivery queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          description: Authentication required
+        "403":
+          description: Workspace administrator access required
+        "404":
+          description: Endpoint not found
+  /webhooks/deliveries:
+    parameters:
+      - name: endpointId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+    get:
+      operationId: listWebhookDeliveries
+      tags: [webhooks]
+      summary: List recent delivery attempts for an endpoint
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Delivery history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          description: Authentication required
+        "404":
+          description: Endpoint not found
+  /webhooks/deliveries/{deliveryId}/retry:
+    parameters:
+      - name: deliveryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: retryWebhookDelivery
+      tags: [webhooks]
+      summary: Retry a failed delivery
+      security:
+        - clerkSession: []
+      responses:
+        "202":
+          description: Delivery queued for manual retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDelivery"
+        "401":
+          description: Authentication required
+        "403":
+          description: Workspace administrator access required
+        "404":
+          description: Delivery not found
+        "409":
+          description: Delivery is not failed or the endpoint is disabled
+  /webhooks/incoming/{endpointId}:
+    parameters:
+      - name: endpointId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-ChatMaster-Timestamp
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: "^[0-9]{10}$"
+      - name: X-ChatMaster-Signature
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: "^v1=[a-f0-9]{64}$"
+    post:
+      operationId: receiveIncomingWebhook
+      tags: [webhooks]
+      summary: Accept a signed, idempotent incoming event
+      description: The body must be signed as HMAC-SHA256 over the timestamp, a period, and the exact raw request bytes. Timestamps must be within five minutes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomingWebhookEnvelope"
+      responses:
+        "202":
+          description: Event accepted and queued for subscribed endpoints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncomingWebhookResult"
+        "200":
+          description: Duplicate event already processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncomingWebhookResult"
+        "400":
+          description: Invalid JSON or event envelope
+        "401":
+          description: Invalid signature or expired timestamp
+        "404":
+          description: Incoming endpoint not found
+        "413":
+          description: Request body is too large
   /healthz:
     get:
       operationId: healthCheck
@@ -646,4 +935,199 @@ components:
           type: string
       required:
         - status
+    WebhookEventType:
+      type: object
+      required: [eventType, description]
+      properties:
+        eventType:
+          type: string
+          enum: [flow.published, webhook.incoming.received]
+        description:
+          type: string
+    WebhookEndpoint:
+      type: object
+      required: [id, name, direction, url, eventTypes, isEnabled, secretReference, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        direction:
+          type: string
+          enum: [outgoing, incoming]
+        url:
+          type: ["string", "null"]
+          format: uri
+        eventTypes:
+          type: array
+          items:
+            type: string
+            enum: [flow.published, webhook.incoming.received]
+        isEnabled:
+          type: boolean
+        secretReference:
+          type: ["string", "null"]
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    WebhookEndpointInput:
+      type: object
+      required: [name, direction]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        direction:
+          type: string
+          enum: [outgoing, incoming]
+        url:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2048
+        eventTypes:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: string
+            enum: [flow.published, webhook.incoming.received]
+    WebhookEndpointUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        url:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2048
+        eventTypes:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items:
+            type: string
+            enum: [flow.published, webhook.incoming.received]
+        isEnabled:
+          type: boolean
+    WebhookEndpointCreated:
+      type: object
+      required: [endpoint, signingSecret, inboundPath]
+      properties:
+        endpoint:
+          $ref: "#/components/schemas/WebhookEndpoint"
+        signingSecret:
+          type: string
+          description: Displayed only in this creation response.
+        inboundPath:
+          type: ["string", "null"]
+          description: Relative signed-ingress path for incoming endpoints.
+    WebhookSecretRotation:
+      type: object
+      required: [signingSecret, secretReference]
+      properties:
+        signingSecret:
+          type: string
+          description: Displayed only in this rotation response.
+        secretReference:
+          type: string
+          format: uuid
+    WebhookDeliveryAttempt:
+      type: object
+      required: [id, attemptNumber, status, requestStartedAt, finishedAt, responseStatus, errorMessage]
+      properties:
+        id:
+          type: string
+          format: uuid
+        attemptNumber:
+          type: integer
+        status:
+          type: string
+          enum: [in_progress, succeeded, failed]
+        requestStartedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: ["string", "null"]
+          format: date-time
+        responseStatus:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+    WebhookDelivery:
+      type: object
+      required: [id, endpointId, eventId, eventType, status, attemptCount, retryCount, nextAttemptAt, httpStatus, lastError, createdAt, updatedAt, attempts]
+      properties:
+        id:
+          type: string
+          format: uuid
+        endpointId:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum: [flow.published, webhook.incoming.received, webhook.test]
+        status:
+          type: string
+          enum: [pending, delivering, delivered, failed, cancelled]
+        attemptCount:
+          type: integer
+          minimum: 0
+        retryCount:
+          type: integer
+          minimum: 0
+        nextAttemptAt:
+          type: ["string", "null"]
+          format: date-time
+        httpStatus:
+          type: ["integer", "null"]
+        lastError:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookDeliveryAttempt"
+    IncomingWebhookEnvelope:
+      type: object
+      required: [id, type, data]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          minLength: 1
+          maxLength: 120
+        data:
+          type: object
+          additionalProperties: true
+    IncomingWebhookResult:
+      type: object
+      required: [accepted, duplicate, eventId]
+      properties:
+        accepted:
+          type: boolean
+        duplicate:
+          type: boolean
+        eventId:
+          type: string
+          format: uuid
 

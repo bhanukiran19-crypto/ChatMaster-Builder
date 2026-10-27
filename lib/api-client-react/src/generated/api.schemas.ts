@@ -390,3 +390,217 @@ export interface HealthStatus {
   status: string;
 }
 
+export type WebhookEventTypeEventType = typeof WebhookEventTypeEventType[keyof typeof WebhookEventTypeEventType];
+
+
+export const WebhookEventTypeEventType = {
+  flowpublished: 'flow.published',
+  webhookincomingreceived: 'webhook.incoming.received',
+} as const;
+
+export interface WebhookEventType {
+  eventType: WebhookEventTypeEventType;
+  description: string;
+}
+
+export type WebhookEndpointDirection = typeof WebhookEndpointDirection[keyof typeof WebhookEndpointDirection];
+
+
+export const WebhookEndpointDirection = {
+  outgoing: 'outgoing',
+  incoming: 'incoming',
+} as const;
+
+export type WebhookEndpointEventTypesItem = typeof WebhookEndpointEventTypesItem[keyof typeof WebhookEndpointEventTypesItem];
+
+
+export const WebhookEndpointEventTypesItem = {
+  flowpublished: 'flow.published',
+  webhookincomingreceived: 'webhook.incoming.received',
+} as const;
+
+export interface WebhookEndpoint {
+  id: string;
+  name: string;
+  direction: WebhookEndpointDirection;
+  /** @nullable */
+  url: string | null;
+  eventTypes: WebhookEndpointEventTypesItem[];
+  isEnabled: boolean;
+  /** @nullable */
+  secretReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WebhookEndpointInputDirection = typeof WebhookEndpointInputDirection[keyof typeof WebhookEndpointInputDirection];
+
+
+export const WebhookEndpointInputDirection = {
+  outgoing: 'outgoing',
+  incoming: 'incoming',
+} as const;
+
+export type WebhookEndpointInputEventTypesItem = typeof WebhookEndpointInputEventTypesItem[keyof typeof WebhookEndpointInputEventTypesItem];
+
+
+export const WebhookEndpointInputEventTypesItem = {
+  flowpublished: 'flow.published',
+  webhookincomingreceived: 'webhook.incoming.received',
+} as const;
+
+export interface WebhookEndpointInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  direction: WebhookEndpointInputDirection;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  url?: string | null;
+  /** @maxItems 10 */
+  eventTypes?: WebhookEndpointInputEventTypesItem[];
+}
+
+export type WebhookEndpointUpdateEventTypesItem = typeof WebhookEndpointUpdateEventTypesItem[keyof typeof WebhookEndpointUpdateEventTypesItem];
+
+
+export const WebhookEndpointUpdateEventTypesItem = {
+  flowpublished: 'flow.published',
+  webhookincomingreceived: 'webhook.incoming.received',
+} as const;
+
+export interface WebhookEndpointUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  url?: string | null;
+  /** @maxItems 10 */
+  eventTypes?: WebhookEndpointUpdateEventTypesItem[];
+  isEnabled?: boolean;
+}
+
+export interface WebhookEndpointCreated {
+  endpoint: WebhookEndpoint;
+  /** Displayed only in this creation response. */
+  signingSecret: string;
+  /**
+     * Relative signed-ingress path for incoming endpoints.
+     * @nullable
+     */
+  inboundPath: string | null;
+}
+
+export interface WebhookSecretRotation {
+  /** Displayed only in this rotation response. */
+  signingSecret: string;
+  secretReference: string;
+}
+
+export type WebhookDeliveryAttemptStatus = typeof WebhookDeliveryAttemptStatus[keyof typeof WebhookDeliveryAttemptStatus];
+
+
+export const WebhookDeliveryAttemptStatus = {
+  in_progress: 'in_progress',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export interface WebhookDeliveryAttempt {
+  id: string;
+  attemptNumber: number;
+  status: WebhookDeliveryAttemptStatus;
+  requestStartedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  /** @nullable */
+  responseStatus: number | null;
+  /** @nullable */
+  errorMessage: string | null;
+}
+
+export type WebhookDeliveryEventType = typeof WebhookDeliveryEventType[keyof typeof WebhookDeliveryEventType];
+
+
+export const WebhookDeliveryEventType = {
+  flowpublished: 'flow.published',
+  webhookincomingreceived: 'webhook.incoming.received',
+  webhooktest: 'webhook.test',
+} as const;
+
+export type WebhookDeliveryStatus = typeof WebhookDeliveryStatus[keyof typeof WebhookDeliveryStatus];
+
+
+export const WebhookDeliveryStatus = {
+  pending: 'pending',
+  delivering: 'delivering',
+  delivered: 'delivered',
+  failed: 'failed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  eventId: string;
+  eventType: WebhookDeliveryEventType;
+  status: WebhookDeliveryStatus;
+  /** @minimum 0 */
+  attemptCount: number;
+  /** @minimum 0 */
+  retryCount: number;
+  /** @nullable */
+  nextAttemptAt: string | null;
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  attempts: WebhookDeliveryAttempt[];
+}
+
+export type IncomingWebhookEnvelopeData = { [key: string]: unknown };
+
+export interface IncomingWebhookEnvelope {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  type: string;
+  data: IncomingWebhookEnvelopeData;
+}
+
+export interface IncomingWebhookResult {
+  accepted: boolean;
+  duplicate: boolean;
+  eventId: string;
+}
+
+export type ListWebhookDeliveriesParams = {
+endpointId: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+

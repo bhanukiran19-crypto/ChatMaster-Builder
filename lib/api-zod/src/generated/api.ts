@@ -1125,6 +1125,287 @@ export const SendSimulationInputResponse = zod.object({
 
 
 /**
+ * @summary List event types currently emitted by ChatMaster
+ */
+export const ListWebhookEventTypesResponseItem = zod.object({
+  "eventType": zod.enum(['flow.published', 'webhook.incoming.received']),
+  "description": zod.string()
+})
+export const ListWebhookEventTypesResponse = zod.array(ListWebhookEventTypesResponseItem)
+
+
+/**
+ * @summary List workspace webhook endpoints
+ */
+export const ListWebhookEndpointsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "direction": zod.enum(['outgoing', 'incoming']),
+  "url": zod.string().url().nullable(),
+  "eventTypes": zod.array(zod.enum(['flow.published', 'webhook.incoming.received'])),
+  "isEnabled": zod.boolean(),
+  "secretReference": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListWebhookEndpointsResponse = zod.array(ListWebhookEndpointsResponseItem)
+
+
+/**
+ * @summary Create an incoming or outgoing webhook endpoint
+ */
+export const createWebhookEndpointBodyNameMax = 120;
+
+export const createWebhookEndpointBodyUrlMax = 2048;
+
+export const createWebhookEndpointBodyEventTypesMax = 10;
+
+
+
+export const CreateWebhookEndpointBody = zod.object({
+  "name": zod.string().min(1).max(createWebhookEndpointBodyNameMax),
+  "direction": zod.enum(['outgoing', 'incoming']),
+  "url": zod.string().url().max(createWebhookEndpointBodyUrlMax).nullish(),
+  "eventTypes": zod.array(zod.enum(['flow.published', 'webhook.incoming.received'])).max(createWebhookEndpointBodyEventTypesMax).optional()
+})
+
+export const CreateWebhookEndpointResponse = zod.object({
+  "endpoint": zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "direction": zod.enum(['outgoing', 'incoming']),
+  "url": zod.string().url().nullable(),
+  "eventTypes": zod.array(zod.enum(['flow.published', 'webhook.incoming.received'])),
+  "isEnabled": zod.boolean(),
+  "secretReference": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "signingSecret": zod.string().describe('Displayed only in this creation response.'),
+  "inboundPath": zod.string().nullable().describe('Relative signed-ingress path for incoming endpoints.')
+})
+
+
+/**
+ * @summary Update endpoint settings and event subscriptions
+ */
+export const UpdateWebhookEndpointParams = zod.object({
+  "endpointId": zod.coerce.string().uuid()
+})
+
+export const updateWebhookEndpointBodyNameMax = 120;
+
+export const updateWebhookEndpointBodyUrlMax = 2048;
+
+export const updateWebhookEndpointBodyEventTypesMax = 10;
+
+
+
+export const UpdateWebhookEndpointBody = zod.object({
+  "name": zod.string().min(1).max(updateWebhookEndpointBodyNameMax).optional(),
+  "url": zod.string().url().max(updateWebhookEndpointBodyUrlMax).nullish(),
+  "eventTypes": zod.array(zod.enum(['flow.published', 'webhook.incoming.received'])).max(updateWebhookEndpointBodyEventTypesMax).optional(),
+  "isEnabled": zod.boolean().optional()
+})
+
+export const UpdateWebhookEndpointResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "direction": zod.enum(['outgoing', 'incoming']),
+  "url": zod.string().url().nullable(),
+  "eventTypes": zod.array(zod.enum(['flow.published', 'webhook.incoming.received'])),
+  "isEnabled": zod.boolean(),
+  "secretReference": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete an endpoint and its delivery history
+ */
+export const DeleteWebhookEndpointParams = zod.object({
+  "endpointId": zod.coerce.string().uuid()
+})
+
+export const DeleteWebhookEndpointResponse = zod.void()
+
+
+/**
+ * @summary Replace an endpoint signing secret
+ */
+export const RotateWebhookSecretParams = zod.object({
+  "endpointId": zod.coerce.string().uuid()
+})
+
+export const RotateWebhookSecretResponse = zod.object({
+  "signingSecret": zod.string().describe('Displayed only in this rotation response.'),
+  "secretReference": zod.string().uuid()
+})
+
+
+/**
+ * @summary Queue a signed test delivery
+ */
+export const TestWebhookEndpointParams = zod.object({
+  "endpointId": zod.coerce.string().uuid()
+})
+
+export const testWebhookEndpointResponseAttemptCountMin = 0;
+
+export const testWebhookEndpointResponseRetryCountMin = 0;
+
+
+
+export const TestWebhookEndpointResponse = zod.object({
+  "id": zod.string().uuid(),
+  "endpointId": zod.string().uuid(),
+  "eventId": zod.string().uuid(),
+  "eventType": zod.enum(['flow.published', 'webhook.incoming.received', 'webhook.test']),
+  "status": zod.enum(['pending', 'delivering', 'delivered', 'failed', 'cancelled']),
+  "attemptCount": zod.number().int().min(testWebhookEndpointResponseAttemptCountMin),
+  "retryCount": zod.number().int().min(testWebhookEndpointResponseRetryCountMin),
+  "nextAttemptAt": zod.coerce.date().nullable(),
+  "httpStatus": zod.number().int().nullable(),
+  "lastError": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "attemptNumber": zod.number().int(),
+  "status": zod.enum(['in_progress', 'succeeded', 'failed']),
+  "requestStartedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.number().int().nullable(),
+  "errorMessage": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary List recent delivery attempts for an endpoint
+ */
+export const listWebhookDeliveriesQueryLimitDefault = 25;
+export const listWebhookDeliveriesQueryLimitMax = 100;
+
+export const listWebhookDeliveriesQueryOffsetDefault = 0;
+export const listWebhookDeliveriesQueryOffsetMin = 0;
+
+
+
+export const ListWebhookDeliveriesQueryParams = zod.object({
+  "endpointId": zod.coerce.string().uuid(),
+  "limit": zod.coerce.number().int().min(1).max(listWebhookDeliveriesQueryLimitMax).default(listWebhookDeliveriesQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listWebhookDeliveriesQueryOffsetMin).default(listWebhookDeliveriesQueryOffsetDefault)
+})
+
+export const listWebhookDeliveriesResponseAttemptCountMin = 0;
+
+export const listWebhookDeliveriesResponseRetryCountMin = 0;
+
+
+
+export const ListWebhookDeliveriesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "endpointId": zod.string().uuid(),
+  "eventId": zod.string().uuid(),
+  "eventType": zod.enum(['flow.published', 'webhook.incoming.received', 'webhook.test']),
+  "status": zod.enum(['pending', 'delivering', 'delivered', 'failed', 'cancelled']),
+  "attemptCount": zod.number().int().min(listWebhookDeliveriesResponseAttemptCountMin),
+  "retryCount": zod.number().int().min(listWebhookDeliveriesResponseRetryCountMin),
+  "nextAttemptAt": zod.coerce.date().nullable(),
+  "httpStatus": zod.number().int().nullable(),
+  "lastError": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "attemptNumber": zod.number().int(),
+  "status": zod.enum(['in_progress', 'succeeded', 'failed']),
+  "requestStartedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.number().int().nullable(),
+  "errorMessage": zod.string().nullable()
+}))
+})
+export const ListWebhookDeliveriesResponse = zod.array(ListWebhookDeliveriesResponseItem)
+
+
+/**
+ * @summary Retry a failed delivery
+ */
+export const RetryWebhookDeliveryParams = zod.object({
+  "deliveryId": zod.coerce.string().uuid()
+})
+
+export const retryWebhookDeliveryResponseAttemptCountMin = 0;
+
+export const retryWebhookDeliveryResponseRetryCountMin = 0;
+
+
+
+export const RetryWebhookDeliveryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "endpointId": zod.string().uuid(),
+  "eventId": zod.string().uuid(),
+  "eventType": zod.enum(['flow.published', 'webhook.incoming.received', 'webhook.test']),
+  "status": zod.enum(['pending', 'delivering', 'delivered', 'failed', 'cancelled']),
+  "attemptCount": zod.number().int().min(retryWebhookDeliveryResponseAttemptCountMin),
+  "retryCount": zod.number().int().min(retryWebhookDeliveryResponseRetryCountMin),
+  "nextAttemptAt": zod.coerce.date().nullable(),
+  "httpStatus": zod.number().int().nullable(),
+  "lastError": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "attemptNumber": zod.number().int(),
+  "status": zod.enum(['in_progress', 'succeeded', 'failed']),
+  "requestStartedAt": zod.coerce.date(),
+  "finishedAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.number().int().nullable(),
+  "errorMessage": zod.string().nullable()
+}))
+})
+
+
+/**
+ * The body must be signed as HMAC-SHA256 over the timestamp, a period, and the exact raw request bytes. Timestamps must be within five minutes.
+ * @summary Accept a signed, idempotent incoming event
+ */
+export const ReceiveIncomingWebhookParams = zod.object({
+  "endpointId": zod.coerce.string().uuid()
+})
+
+export const receiveIncomingWebhookHeaderXChatMasterTimestampRegExp = new RegExp('^[0-9]{10}$');
+export const receiveIncomingWebhookHeaderXChatMasterSignatureRegExp = new RegExp('^v1=[a-f0-9]{64}$');
+
+
+export const ReceiveIncomingWebhookHeader = zod.object({
+  "X-ChatMaster-Timestamp": zod.string().regex(receiveIncomingWebhookHeaderXChatMasterTimestampRegExp),
+  "X-ChatMaster-Signature": zod.string().regex(receiveIncomingWebhookHeaderXChatMasterSignatureRegExp)
+})
+
+export const receiveIncomingWebhookBodyIdMax = 200;
+
+export const receiveIncomingWebhookBodyTypeMax = 120;
+
+
+
+export const ReceiveIncomingWebhookBody = zod.object({
+  "id": zod.string().min(1).max(receiveIncomingWebhookBodyIdMax),
+  "type": zod.string().min(1).max(receiveIncomingWebhookBodyTypeMax),
+  "data": zod.record(zod.string(), zod.unknown())
+})
+
+export const ReceiveIncomingWebhookResponse = zod.object({
+  "accepted": zod.boolean(),
+  "duplicate": zod.boolean(),
+  "eventId": zod.string().uuid()
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
